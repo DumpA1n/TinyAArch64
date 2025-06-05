@@ -24,7 +24,7 @@ struct InstructionFormat {
     uint8_t rt;    // D型的目标寄存器
     uint16_t immediate; // I型的立即数
     uint8_t condition; // B型的条件码
-    uint32_t offset;   // D型和B型的偏移量
+    int8_t offset;   // D型和B型的偏移量
 };
 
 // 指令操作码定义
@@ -35,10 +35,10 @@ enum Opcode {
     OP_SUBI = 0b000011,
     OP_AND = 0b000100,
     OP_ANDI = 0b000101,
-    OP_OR = 0b000110,
-    OP_ORI = 0b000111,
-    OP_XOR = 0b001000,
-    OP_XORI = 0b001001,
+    OP_ORR = 0b000110,
+    OP_ORRI = 0b000111,
+    OP_EOR = 0b001000,
+    OP_EORI = 0b001001,
     OP_MOV = 0b001010,
     OP_MOVI = 0b001011,
     OP_LDR = 0b001100,
@@ -46,8 +46,14 @@ enum Opcode {
     OP_B = 0b001110,
     OP_B_COND = 0b001111,
     OP_CMP = 0b010000,
-    OP_HLT = 0b111111,
-    OP_RET = 0b111111
+    OP_MUL = 0b010001,
+    OP_SDIV = 0b010010,
+    OP_UDIV = 0b010011,
+    OP_BL = 0b010100,
+    OP_BLR = 0b010101,
+    OP_NOP = 0b111101,
+    OP_RET = 0b111110,
+    OP_HLT = 0b111111
 };
 
 // 条件码定义
@@ -81,7 +87,7 @@ struct StatusRegister {
 
 // ALU操作定义
 enum class ALUOp {
-    ADD, SUB, AND, OR, XOR, NOT, LSL, LSR, ASR, CMP, PASS_A, PASS_B
+    ADD, SUB, MUL, SDIV, UDIV, AND, ORR, EOR, NOT, LSL, LSR, ASR, CMP, PASS_A, PASS_B
 };
 
 // 模拟的CPU类
@@ -145,22 +151,22 @@ public:
         }
         std::cout << std::endl;
         
-        // 打印内存前64字节
-        std::cout << "Memory (first 64 bytes):" << std::endl;
-        for (int i = 0; i < 64; i++) {
-            if (i % 16 == 0) {
-                if (i > 0) std::cout << std::endl;
-                std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
-            }
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
-        }
-        std::cout << std::dec << std::endl << std::endl;
+        // // 打印内存前64字节
+        // std::cout << "Memory (first 64 bytes):" << std::endl;
+        // for (int i = 0; i < 64; i++) {
+        //     if (i % 16 == 0) {
+        //         if (i > 0) std::cout << std::endl;
+        //         std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
+        //     }
+        //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
+        // }
+        // std::cout << std::dec << std::endl << std::endl;
     }
 
 private:
     std::vector<uint8_t> memory;     // 字节寻址内存
-    std::array<uint32_t, NUM_REGS> regs; // 寄存器文件
-    uint32_t PC;                // 程序计数器
+    std::array<uint64_t, NUM_REGS> regs; // 寄存器文件
+    uint64_t PC;                // 程序计数器
     uint32_t IR;                // 指令寄存器
     StatusRegister statusReg;   // 状态寄存器
 
@@ -174,12 +180,37 @@ private:
     void execute(const InstructionFormat& instr);
 
     // ====================== ALU操作 ======================
-    void aluOperation(ALUOp op, uint8_t rd, uint32_t a, uint32_t b);
+    void aluOperation(ALUOp op, uint8_t rd, int64_t a, int64_t b);
 
     // ====================== 条件检查 ======================
     bool checkCondition(uint8_t condition) const;
 
     // ====================== 内存访问 ======================
-    uint32_t readMemory(uint32_t address) const;
-    void    writeMemory(uint32_t address, uint32_t value);
+    template<typename T>
+    T readMemory(uint64_t address) const {
+        constexpr size_t size = sizeof(T);
+
+        if (address + size > MEM_SIZE) {
+            throw std::runtime_error("Memory read out of bounds: " + std::to_string(address));
+        }
+        
+        T value = 0;
+        for (size_t i = 0; i < size; ++i) {
+            value |= static_cast<uint32_t>(memory[address + i]) << (i * 8);
+        }
+        return value;
+    }
+
+    template<typename T>
+    void writeMemory(uint64_t address, T value) {
+        constexpr size_t size = sizeof(T);
+
+        if (address + size > MEM_SIZE) {
+            throw std::runtime_error("Memory write out of bounds: " + std::to_string(address));
+        }
+        
+        for (size_t i = 0; i < size; ++i) {
+            memory[address + i] = (value >> (i * 8)) & 0xFF;
+        }
+    }
 };

@@ -1,6 +1,36 @@
 #include "Assembler.h"
 
+#include <unordered_set>
+
 #include "CPU.h"
+
+static std::unordered_map<std::string, std::pair<Opcode, Opcode>> OpcodeMap = {
+    {"ADD", {OP_ADD, OP_ADDI}},
+    {"SUB", {OP_SUB, OP_SUBI}},
+    {"MUL", {OP_MUL, OP_MUL}},
+    {"SDIV", {OP_SDIV, OP_SDIV}},
+    {"UDIV", {OP_UDIV, OP_UDIV}},
+    {"AND", {OP_AND, OP_ANDI}},
+    {"ORR", {OP_ORR, OP_ORRI}},
+    {"EOR", {OP_EOR, OP_EORI}}
+};
+
+static std::unordered_map<std::string, ConditionCode> B_COND_Map = {
+    {"B.EQ", COND_EQ},
+    {"B.NE", COND_NE},
+    {"B.LT", COND_LT},
+    {"B.GE", COND_GE},
+    {"B.GT", COND_GT},
+    {"B.LE", COND_LE},
+    {"B.AL", COND_AL},
+    {"BEQ",  COND_EQ},
+    {"BNE",  COND_NE},
+    {"BLT",  COND_LT},
+    {"BGE",  COND_GE},
+    {"BGT",  COND_GT},
+    {"BLE",  COND_LE},
+    {"BAL",  COND_AL}
+};
 
 std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLines) {
     std::vector<uint32_t> machineCode;
@@ -27,84 +57,114 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
     // 第二次遍历：汇编指令
     for (const auto& line : asmLines) {
         std::string trimmed = trim(line);
-        if (trimmed.empty() || trimmed.back() == ':') continue;
-        std::cout << "trimmed: " << trimmed << std::endl;
+        if (trimmed.empty() || trimmed.back() == ':' || trimmed.rfind("//", 0) == 0) continue;
+        std::cout << "trimmed instruction: " << trimmed << std::endl;
 
         std::istringstream iss(trimmed);
-        std::string opcode;
-        iss >> opcode;
+        std::string token;
+        std::vector<std::string> tokens;
+
+        while (iss >> token) {
+            token.erase(std::remove(token.begin(), token.end(), ','), token.end());
+            tokens.push_back(token);
+        }
+        std::transform(tokens[0].begin(), tokens[0].end(), tokens[0].begin(), 
+                        [](unsigned char c) { return std::toupper(c); });
+
+        if (tokens.empty()) throw std::runtime_error("None operands");
+
+        std::string opcode = tokens[0];
 
         if (opcode == "MOV") {
-            // std::string rd, imm;
-            // iss >> rd >> imm;
-            // uint8_t rd_num = parseReg(rd);
-            // uint16_t imm_val = stoi(imm.substr(1));
-            // uint32_t instr = (0b001001 << 26) | (rd_num << 21) | (0 << 16) | imm_val;
-            // machineCode.push_back(instr);
+            if (tokens.size() < 3) throw std::runtime_error("Too few operands, opcode: " + opcode);
             uint32_t instr;
-            std::vector<std::string> tokens(2);
-            iss >> tokens[0] >> tokens[1];
-            std::cout << tokens[0] << " " << tokens[1] << std::endl;
-            if (tokens[1].front() == 'R') {
-                uint8_t rd_num = parseReg(tokens[0]);
-                uint8_t rn_num = parseReg(tokens[1]);
+            if (tokens[2].front() == 'R') {
+                uint8_t rd_num = parseReg(tokens[1]);
+                uint8_t rn_num = parseReg(tokens[2]);
                 instr = (OP_MOV << 26) | (rd_num << 21) | (rn_num << 16);
-            } else if (tokens[1].front() == '#') {
-                uint8_t rd_num = parseReg(tokens[0]);
+            } else if (tokens[2].front() == '#') {
+                uint8_t rd_num = parseReg(tokens[1]);
                 bool isHex = false;
-                if (tokens[1].rfind("#0x", 0) == 0 || tokens[1].rfind("#0X", 0) == 0)
+                if (tokens[2].rfind("#0x", 0) == 0 || tokens[2].rfind("#0X", 0) == 0)
                     isHex = true;
-                uint32_t imm_val = std::stoul(tokens[1].substr(1), nullptr, isHex ? 16 : 10);
+                uint32_t imm_val = std::stoul(tokens[2].substr(1), nullptr, isHex ? 16 : 10);
                 instr = (OP_MOVI << 26) | (rd_num << 21) | (0 << 16) | imm_val;
             } else {
                 std::cerr << "Invalid Instruction: " << trimmed << std::endl;
             }
             machineCode.push_back(instr);
-        } else if (opcode == "ADD") {
-            std::string rd, rn, rm;
-            iss >> rd >> rn >> rm;
-            uint8_t rd_num = parseReg(rd);
-            uint8_t rn_num = parseReg(rn);
-            uint8_t rm_num = parseReg(rm);
-            uint32_t instr = (OP_ADD << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
+
+        } else if (opcode == "ADD" || opcode == "SUB" || opcode == "AND" || opcode == "ORR" || opcode == "EOR") {
+            if (tokens.size() < 4) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            uint32_t instr;
+            if (tokens[3].front() == 'R') {
+                uint8_t rd_num = parseReg(tokens[1]);
+                uint8_t rn_num = parseReg(tokens[2]);
+                uint8_t rm_num = parseReg(tokens[3]);
+                instr = (OpcodeMap[opcode].first << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
+            } else if (tokens[3].front() == '#') {
+                uint8_t rd_num = parseReg(tokens[1]);
+                uint8_t rn_num = parseReg(tokens[2]);
+                bool isHex = false;
+                if (tokens[3].rfind("#0x", 0) == 0 || tokens[3].rfind("#0X", 0) == 0)
+                    isHex = true;
+                uint32_t imm_val = std::stoul(tokens[3].substr(1), nullptr, isHex ? 16 : 10);
+                instr = (OpcodeMap[opcode].second << 26) | (rd_num << 21) | (rn_num << 16) | imm_val;
+            } else {
+                std::cerr << "Invalid Instruction: " << trimmed << std::endl;
+            }
             machineCode.push_back(instr);
-        } else if (opcode == "SUB") {
-            std::string rd, rn, rm;
-            iss >> rd >> rn >> rm;
-            uint8_t rd_num = parseReg(rd);
-            uint8_t rn_num = parseReg(rn);
-            uint8_t rm_num = parseReg(rm);
-            uint32_t instr = (OP_SUB << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
+
+        } else if (opcode == "MUL" || opcode == "SDIV" || opcode == "UDIV") {
+            if (tokens.size() < 4) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            uint8_t rd_num = parseReg(tokens[1]);
+            uint8_t rn_num = parseReg(tokens[2]);
+            uint8_t rm_num = parseReg(tokens[3]);
+            uint32_t instr = (OpcodeMap[opcode].first << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
             machineCode.push_back(instr);
-        } else if (opcode == "STR") {
-            std::string rt, rest;
-            iss >> rt >> rest;
-            size_t comma = rest.find(',');
-            std::string baseReg = rest.substr(1, comma - 1);
-            std::string offsetStr = rest.substr(comma + 2, rest.length() - comma - 3);
-            uint8_t rt_num = parseReg(rt);
-            uint8_t rn_num = parseReg(baseReg);
-            uint16_t offset = stoi(offsetStr);
-            uint32_t instr = (OP_STR << 26) | (rt_num << 21) | (rn_num << 16) | offset;
+
+        } else if (opcode == "CMP") {
+            if (tokens.size() < 3) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            uint8_t rd_num = parseReg(tokens[1]);
+            uint8_t rn_num = parseReg(tokens[2]);
+            uint32_t instr = (OP_CMP << 26) | (rd_num << 21) | (rn_num << 16);
             machineCode.push_back(instr);
+
+        // } else if (opcode == "STR") {
+        //     std::string rt, rest;
+        //     iss >> rt >> rest;
+        //     size_t comma = rest.find(',');
+        //     std::string baseReg = rest.substr(1, comma - 1);
+        //     std::string offsetStr = rest.substr(comma + 2, rest.length() - comma - 3);
+        //     uint8_t rt_num = parseReg(rt);
+        //     uint8_t rn_num = parseReg(baseReg);
+        //     uint16_t offset = stoi(offsetStr);
+        //     uint32_t instr = (OP_STR << 26) | (rt_num << 21) | (rn_num << 16) | offset;
+        //     machineCode.push_back(instr);
+
         } else if (opcode == "B") {
-            std::string label;
-            iss >> label;
+            if (tokens.size() < 2) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
-            machineCode.push_back(0); // 占位，后续填充
+            uint32_t instr = (OP_B << 26);
+            machineCode.push_back(instr); // 占位，后续填充
+
+        } else if (B_COND_Map.find(opcode) != B_COND_Map.end()) {
+            if (tokens.size() < 2) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            std::string label = tokens[1];
+            pendingLabels.push_back({pc, label});
+            uint8_t condition = B_COND_Map[opcode];
+            uint32_t instr = (OP_B_COND << 26) | (((condition & 0x0F) << 22));
+            machineCode.push_back(instr); // 占位，后续填充
+
         } else if (opcode == "HLT") {
             uint32_t instr = (OP_HLT << 26);
             machineCode.push_back(instr);
+
         } else {
-            std::cerr << "未知指令: " << opcode << std::endl;
+            std::cerr << "未知指令: " << tokens[0] << std::endl;
             exit(1);
         }
-
-        uint32_t code = machineCode[machineCode.size() - 1];
-        for (int i = 31; i >= 0; --i) {
-            std::cout << ((code >> i) & 1);
-        }
-        std::cout << std::endl;
 
         pc += 4;
     }
@@ -113,15 +173,33 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
     for (auto& [addr, label] : pendingLabels) {
         if (labelAddresses.count(label)) {
             int labelAddr = labelAddresses[label];
-            int offset = (labelAddr - (addr + 4)) >> 2;
-            machineCode[addr / 4] = (OP_B << 26) | (offset & 0x03FFFFFF);
+            int8_t offset = (labelAddr - (addr + 4)) >> 2;
+            // machineCode[addr / 4] = (OP_B << 26) | (offset & 0x03FFFFFF);
+            machineCode[addr / 4] |= (offset & 0x03FFFFFF);
         } else {
             std::cerr << "未知标签: " << label << std::endl;
             exit(1);
         }
     }
 
+    for (const auto& code : machineCode) {
+        for (int i = 31; i >= 0; --i) {
+            std::cout << ((code >> i) & 1);
+        }
+        std::cout << std::endl;
+    }
+
     return machineCode;
+}
+
+std::vector<uint32_t> Assembler::assemble(const std::string& asmLines) {
+    std::istringstream iss(asmLines);
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(iss, line)) {
+        lines.push_back(line);
+    }
+    return assemble(lines);
 }
 
 std::string Assembler::trim(const std::string& s) {
@@ -131,6 +209,6 @@ std::string Assembler::trim(const std::string& s) {
 }
 
 uint8_t Assembler::parseReg(const std::string& r) {
-    if (r[0] != 'R') throw std::runtime_error("无效寄存器名: " + r);
+    if (r[0] != 'R' && r[0] != 'r') throw std::runtime_error("无效寄存器名: " + r);
     return stoi(r.substr(1));
 }

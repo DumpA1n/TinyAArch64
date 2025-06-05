@@ -12,7 +12,13 @@ std::vector<uint32_t> createTestProgram() {
         "MOV R0, #0x1",
         "MOV R1, R0",
         // "MOV R1, #1",
-        // "ADD R0, R0, R1",
+        "ADD R0, R0, R1",
+        "ADD R0, R0, #5",
+        "sub r0, r0, #1",
+        "MOV R3, #2",
+        "MOV R4, #3",
+        "MUL R5, R3, R4",
+        "SDIV R5, R5, R3",
         // "MOV R1, #" + std::to_string(&test_address),
         "B Lable",
         "MOV R26, #1111",
@@ -22,7 +28,20 @@ std::vector<uint32_t> createTestProgram() {
         "HLT"
     };
 
-    return Asm.assemble(asmcode);
+    std::string shellcode = R"(
+        mov r0, #2
+        mov r1, #4
+        cmp r0, r1
+        b.ne L_cmp
+        b L_exit
+        mul r2, r0, r1
+    L_cmp:
+        mov r3, #10
+    L_exit:
+        hlt
+    )";
+
+    return Asm.assemble(shellcode);
     
     // // 手动汇编的机器码
     // program.push_back(0b00100100000000010000000000000000); // MOV R1, #0      (R1 = 0)

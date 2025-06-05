@@ -11,6 +11,7 @@
 class Assembler {
 public:
     std::vector<uint32_t> assemble(const std::vector<std::string>& asmLines);
+    std::vector<uint32_t> assemble(const std::string& asmLines);
 
 private:
     static std::string trim(const std::string& s);

@@ -20,9 +20,12 @@ InstructionFormat CPU::decode() const {
     switch (static_cast<Opcode>(opcode)) {
     case OP_ADD:
     case OP_SUB:
+    case OP_MUL:
+    case OP_SDIV:
+    case OP_UDIV:
     case OP_AND:
-    case OP_OR:
-    case OP_XOR:
+    case OP_ORR:
+    case OP_EOR:
     case OP_MOV:
         instr.type = InstructionType::R_TYPE;
         instr.opcode = opcode;
@@ -34,8 +37,8 @@ InstructionFormat CPU::decode() const {
     case OP_ADDI:
     case OP_SUBI:
     case OP_ANDI:
-    case OP_ORI:
-    case OP_XORI:
+    case OP_ORRI:
+    case OP_EORI:
     case OP_MOVI:
     case OP_CMP:
         instr.type = InstructionType::I_TYPE;
@@ -79,6 +82,11 @@ InstructionFormat CPU::decode() const {
         }
         break;
         
+    case OP_RET:
+        instr.type = InstructionType::R_TYPE;
+        instr.opcode = opcode;
+        break;
+        
     case OP_HLT:
         instr.type = InstructionType::R_TYPE;
         instr.opcode = opcode;
@@ -110,6 +118,18 @@ void CPU::execute(const InstructionFormat& instr) {
         aluOperation(ALUOp::SUB, instr.rd, regs[instr.rn], instr.immediate);
         break;
         
+    case OP_MUL:
+        aluOperation(ALUOp::MUL, instr.rd, regs[instr.rn], regs[instr.rm]);
+        break;
+        
+    case OP_SDIV:
+        aluOperation(ALUOp::SDIV, instr.rd, regs[instr.rn], regs[instr.rm]);
+        break;
+        
+    case OP_UDIV:
+        aluOperation(ALUOp::UDIV, instr.rd, regs[instr.rn], regs[instr.rm]);
+        break;
+        
     case OP_AND:
         aluOperation(ALUOp::AND, instr.rd, regs[instr.rn], regs[instr.rm]);
         break;
@@ -118,20 +138,20 @@ void CPU::execute(const InstructionFormat& instr) {
         aluOperation(ALUOp::AND, instr.rd, regs[instr.rn], instr.immediate);
         break;
         
-    case OP_OR:
-        aluOperation(ALUOp::OR, instr.rd, regs[instr.rn], regs[instr.rm]);
+    case OP_ORR:
+        aluOperation(ALUOp::ORR, instr.rd, regs[instr.rn], regs[instr.rm]);
         break;
         
-    case OP_ORI:
-        aluOperation(ALUOp::OR, instr.rd, regs[instr.rn], instr.immediate);
+    case OP_ORRI:
+        aluOperation(ALUOp::ORR, instr.rd, regs[instr.rn], instr.immediate);
         break;
         
-    case OP_XOR:
-        aluOperation(ALUOp::XOR, instr.rd, regs[instr.rn], regs[instr.rm]);
+    case OP_EOR:
+        aluOperation(ALUOp::EOR, instr.rd, regs[instr.rn], regs[instr.rm]);
         break;
         
-    case OP_XORI:
-        aluOperation(ALUOp::XOR, instr.rd, regs[instr.rn], instr.immediate);
+    case OP_EORI:
+        aluOperation(ALUOp::EOR, instr.rd, regs[instr.rn], instr.immediate);
         break;
         
     case OP_MOV:
@@ -143,30 +163,49 @@ void CPU::execute(const InstructionFormat& instr) {
         break;
         
     case OP_LDR: {
-        uint32_t addr = regs[instr.rn] + instr.offset;
-        regs[instr.rt] = readMemory(addr);
+        uint64_t addr = regs[instr.rn] + instr.offset;
+        regs[instr.rt] = readMemory<uint64_t>(addr);
         break;
     }
         
     case OP_STR: {
-        uint32_t addr = regs[instr.rn] + instr.offset;
+        uint64_t addr = regs[instr.rn] + instr.offset;
         writeMemory(addr, regs[instr.rt]);
         break;
     }
         
     case OP_B:
         // PC当前指向下一条指令，所以需要减去4
-        PC = PC - 4 + (instr.offset << 2);
+        // PC = PC - 4 + (instr.offset << 2);
+        PC = PC + (instr.offset << 2);
         break;
         
     case OP_B_COND:
         if (checkCondition(instr.condition)) {
-            PC = PC - 4 + (instr.offset << 2);
+            // PC = PC - 4 + (instr.offset << 2);
+            PC = PC + (instr.offset << 2);
         }
         break;
         
+    case OP_BL:
+        regs[30] = PC;
+        PC = PC + (instr.offset << 2);
+        break;
+        
+    case OP_BLR:
+        regs[30] = PC;
+        PC = regs[instr.rd];
+        break;
+        
     case OP_CMP:
-        aluOperation(ALUOp::CMP, 0, regs[instr.rn], regs[instr.rd]);
+        aluOperation(ALUOp::CMP, 0, regs[instr.rd], regs[instr.rn]);
+        break;
+        
+    case OP_NOP:
+        break;
+
+    case OP_RET:
+        PC = regs[30];
         break;
         
     case OP_HLT:
@@ -178,8 +217,8 @@ void CPU::execute(const InstructionFormat& instr) {
 }
 
 // ====================== ALU操作 ======================
-void CPU::aluOperation(ALUOp op, uint8_t rd, uint32_t a, uint32_t b) {
-    uint32_t result = 0;
+void CPU::aluOperation(ALUOp op, uint8_t rd, int64_t a, int64_t b) {
+    int64_t result = 0;
     bool carry = false;
     bool overflow = false;
     
@@ -200,15 +239,33 @@ void CPU::aluOperation(ALUOp op, uint8_t rd, uint32_t a, uint32_t b) {
         overflow = ((a ^ b) & (a ^ result)) >> 31;
         break;
         
+    case ALUOp::MUL:
+        result = a * b;
+        break;
+
+    case ALUOp::SDIV:
+        if (b == 0) {
+            throw std::runtime_error("Division by zero");
+        }
+        result = static_cast<int32_t>(a) / static_cast<int32_t>(b);
+        break;
+
+    case ALUOp::UDIV:
+        if (b == 0) {
+            throw std::runtime_error("Division by zero");
+        }
+        result = a / b;
+        break;
+
     case ALUOp::AND:
         result = a & b;
         break;
         
-    case ALUOp::OR:
+    case ALUOp::ORR:
         result = a | b;
         break;
         
-    case ALUOp::XOR:
+    case ALUOp::EOR:
         result = a ^ b;
         break;
         
@@ -248,28 +305,5 @@ bool CPU::checkCondition(uint8_t condition) const {
     case COND_LE: return statusReg.Z || (statusReg.N != statusReg.V); // Z set or N != V
     case COND_AL: return true; // Always
     default: return false;
-    }
-}
-
-// ====================== 内存访问 ======================
-uint32_t CPU::readMemory(uint32_t address) const {
-    if (address + 4 > MEM_SIZE) {
-        throw std::runtime_error("Memory read out of bounds: " + std::to_string(address));
-    }
-    
-    uint32_t value = 0;
-    for (int i = 0; i < 4; i++) {
-        value |= static_cast<uint32_t>(memory[address + i]) << (i * 8);
-    }
-    return value;
-}
-
-void CPU::writeMemory(uint32_t address, uint32_t value) {
-    if (address + 4 > MEM_SIZE) {
-        throw std::runtime_error("Memory write out of bounds: " + std::to_string(address));
-    }
-    
-    for (int i = 0; i < 4; i++) {
-        memory[address + i] = (value >> (i * 8)) & 0xFF;
     }
 }
