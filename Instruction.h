@@ -188,6 +188,18 @@ public:
         };
         return instr;
     }
+
+    static InstructionFormat buildBranchReg(
+        Register rd, bool isLink = false) {
+        
+        InstructionFormat instr;
+        instr.type = InstructionType::BRANCH_REG;
+        
+        instr.details = BranchInfo{
+            BranchCondition::AL, rd, NULL, isLink, 
+        };
+        return instr;
+    }
     
     // 比较指令构建器
     static InstructionFormat buildCompare(Register rn, Register rm) {

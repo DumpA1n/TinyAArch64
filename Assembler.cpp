@@ -76,60 +76,69 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
         std::string opcode = tokens[0];
 
         if (opcode == "MOV") {
-            if (tokens.size() < 3) throw std::runtime_error("Too few operands, opcode: " + opcode);
-            uint32_t instr;
-            if (tokens[2].front() == 'R') {
-                uint8_t rd_num = parseReg(tokens[1]);
-                uint8_t rn_num = parseReg(tokens[2]);
-                instr = (OP_MOV << 26) | (rd_num << 21) | (rn_num << 16);
-            } else if (tokens[2].front() == '#') {
-                uint8_t rd_num = parseReg(tokens[1]);
-                bool isHex = false;
-                if (tokens[2].rfind("#0x", 0) == 0 || tokens[2].rfind("#0X", 0) == 0)
-                    isHex = true;
-                uint32_t imm_val = std::stoi(tokens[2].substr(1), nullptr, isHex ? 16 : 10);
-                uint32_t imm_val_16 = static_cast<uint16_t>(imm_val & 0xFFFF); // 截断低16位
-                instr = (OP_MOVI << 26) | (rd_num << 21) | (0 << 16) | imm_val_16;
-                // instr = (OP_MOVI << 26) | (rd_num << 21) | (0 << 16) | imm_val;
-            } else {
-                std::cerr << "Invalid Instruction: " << trimmed << std::endl;
+            if (tokens.size() < 3) throw std::runtime_error("Too few operands: " + trimmed);
+            auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
+            for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
+            uint8_t sf = parsed[0].isX ? 1 : 0;
+            uint8_t rd_num = parseReg(parsed[0].token);
+            uint8_t rn_num = 0;
+            uint32_t imm_val = 0;
+            uint32_t instr = (sf << 31) | ((parsed[1].isReg ? OP_MOV : OP_MOVI) << 26) | (rd_num << 21);
+            if (parsed[1].isReg) {
+                rn_num = parseReg(parsed[1].token);
+                instr |= (rn_num << 16);
+            } else if (parsed[1].isImm) {
+                imm_val = std::stoi(parsed[1].token.substr(1), nullptr, parsed[1].isHex ? 16 : 10);
+                instr |= (imm_val & 0xFFFF); // 截断低16位
             }
             machineCode.push_back(instr);
 
         } else if (opcode == "ADD" || opcode == "SUB" || opcode == "AND" || opcode == "ORR" || opcode == "EOR") {
-            if (tokens.size() < 4) throw std::runtime_error("Too few operands, opcode: " + opcode);
-            uint32_t instr;
-            if (tokens[3].front() == 'R') {
-                uint8_t rd_num = parseReg(tokens[1]);
-                uint8_t rn_num = parseReg(tokens[2]);
-                uint8_t rm_num = parseReg(tokens[3]);
-                instr = (OpcodeMap[opcode].first << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
-            } else if (tokens[3].front() == '#') {
-                uint8_t rd_num = parseReg(tokens[1]);
-                uint8_t rn_num = parseReg(tokens[2]);
-                bool isHex = false;
-                if (tokens[3].rfind("#0x", 0) == 0 || tokens[3].rfind("#0X", 0) == 0)
-                    isHex = true;
-                uint32_t imm_val = std::stoi(tokens[3].substr(1), nullptr, isHex ? 16 : 10);
-                instr = (OpcodeMap[opcode].second << 26) | (rd_num << 21) | (rn_num << 16) | imm_val;
-            } else {
-                std::cerr << "Invalid Instruction: " << trimmed << std::endl;
+            if (tokens.size() < 4) throw std::runtime_error("Too few operands: " + trimmed);
+            auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
+            for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
+            uint8_t sf = parsed[0].isX ? 1 : 0;
+            uint8_t rd_num = parseReg(parsed[0].token);
+            uint8_t rn_num = parseReg(parsed[1].token);
+            uint8_t rm_num = 0;
+            uint32_t imm_val = 0;
+            uint32_t instr = (sf << 31) | ((parsed[2].isReg ? OpcodeMap[opcode].first : OpcodeMap[opcode].second) << 26) | (rd_num << 21) | (rn_num << 16);
+            if (parsed[2].isReg) {
+                rm_num = parseReg(parsed[2].token);
+                instr |= rm_num;
+            } else if (parsed[2].isImm) {
+                imm_val = std::stoi(parsed[2].token.substr(1), nullptr, parsed[2].isHex ? 16 : 10);
+                instr |= (imm_val & 0xFFFF); // 截断低16位
             }
             machineCode.push_back(instr);
 
         } else if (opcode == "MUL" || opcode == "SDIV" || opcode == "UDIV") {
-            if (tokens.size() < 4) throw std::runtime_error("Too few operands, opcode: " + opcode);
-            uint8_t rd_num = parseReg(tokens[1]);
-            uint8_t rn_num = parseReg(tokens[2]);
-            uint8_t rm_num = parseReg(tokens[3]);
-            uint32_t instr = (OpcodeMap[opcode].first << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
+            if (tokens.size() < 4) throw std::runtime_error("Too few operands: " + trimmed);
+            auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
+            for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
+            uint8_t sf = parsed[0].isX ? 1 : 0;
+            uint8_t rd_num = parseReg(parsed[0].token);
+            uint8_t rn_num = parseReg(parsed[1].token);
+            uint8_t rm_num = parseReg(parsed[2].token);
+            uint32_t instr = (sf << 31) | (OpcodeMap[opcode].first << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
             machineCode.push_back(instr);
 
         } else if (opcode == "CMP") {
-            if (tokens.size() < 3) throw std::runtime_error("Too few operands, opcode: " + opcode);
-            uint8_t rd_num = parseReg(tokens[1]);
-            uint8_t rn_num = parseReg(tokens[2]);
-            uint32_t instr = (OP_CMP << 26) | (rd_num << 21) | (rn_num << 16);
+            if (tokens.size() < 3) throw std::runtime_error("Too few operands: " + trimmed);
+            auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
+            for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
+            uint8_t sf = parsed[0].isX ? 1 : 0;
+            uint8_t rd_num = parseReg(parsed[0].token);
+            uint8_t rn_num = 0;
+            uint32_t imm_val = 0;
+            uint32_t instr = (sf << 31) | ((parsed[1].isReg ? OP_CMP : OP_CMPI) << 26) | (rd_num << 21);
+            if (parsed[1].isReg) {
+                rn_num = parseReg(parsed[1].token);
+                instr |= (rn_num << 16);
+            } else if (parsed[1].isImm) {
+                imm_val = std::stoi(parsed[1].token.substr(1), nullptr, parsed[1].isHex ? 16 : 10);
+                instr |= (imm_val & 0xFFFF); // 截断低16位
+            }
             machineCode.push_back(instr);
 
         // } else if (opcode == "STR") {
@@ -145,14 +154,14 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
         //     machineCode.push_back(instr);
 
         } else if (opcode == "B") {
-            if (tokens.size() < 2) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
             std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
             uint32_t instr = (OP_B << 26);
             machineCode.push_back(instr); // 占位，后续填充
 
         } else if (B_COND_Map.find(opcode) != B_COND_Map.end()) {
-            if (tokens.size() < 2) throw std::runtime_error("Too few operands, opcode: " + opcode);
+            if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
             std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
             uint8_t condition = static_cast<uint8_t>(B_COND_Map[opcode]);
@@ -211,6 +220,47 @@ std::string Assembler::trim(const std::string& s) {
 }
 
 uint8_t Assembler::parseReg(const std::string& r) {
-    if (r[0] != 'R' && r[0] != 'r') throw std::runtime_error("无效寄存器名: " + r);
+    if (r[0] != 'W' && r[0] != 'w' && r[0] != 'X' && r[0] != 'x') {
+        throw std::runtime_error("无效寄存器名: " + r);
+    }
     return stoi(r.substr(1));
+}
+
+std::vector<TokenInfo> Assembler::parseTokens(const std::vector<std::string>& tokens) {
+    std::vector<TokenInfo> parsed;
+
+    auto parseToken = [&](const std::string& token) {
+        TokenInfo info;
+
+        if (token.empty()) throw std::runtime_error("Invalid Token: <empty>");
+
+        if (token[0] == 'W' || token[0] == 'w') {
+            info.isValid = true;
+            info.isReg = true;
+            info.isX = false;
+        } else if (token[0] == 'X' || token[0] == 'x') {
+            info.isValid = true;
+            info.isReg = true;
+            info.isX = true;
+        } else if (token.rfind("#0x", 0) == 0) {
+            info.isValid = true;
+            info.isImm = true;
+            info.isHex = true;
+        } else if (token.rfind("#", 0) == 0) {
+            info.isValid = true;
+            info.isImm = true;
+            info.isHex = false;
+        } else {
+            throw std::runtime_error("Invalid Token: " + token);
+        }
+
+        info.token = token;
+        parsed.push_back(info);
+    };
+
+    for (const auto& token : tokens) {
+        parseToken(token);
+    }
+
+    return parsed;
 }

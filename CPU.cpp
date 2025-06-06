@@ -15,8 +15,9 @@ void CPU::fetch() {
 // ====================== 译码阶段 ======================
 InstructionFormat CPU::decode() const {
     InstructionFormat instr;
-    uint8_t opcode = (IR >> 26) & 0x3F; // 高6位是操作码
-    bool is32Bits = false;
+    uint8_t opcode = (IR >> 26) & 0b011111; // 高6位是操作码
+    bool is64Bits = (IR >> 31) & 0b1;
+    RegWidth regWidth = is64Bits ? RegWidth::X : RegWidth::W;
     
     switch (static_cast<Opcode>(opcode)) {
     case OP_ADD:
@@ -27,9 +28,9 @@ InstructionFormat CPU::decode() const {
     case OP_AND:
     case OP_ORR:
     case OP_EOR: {
-        Register rt{(IR >> 21) & 0x1F, RegWidth::X};
-        Register rn{(IR >> 16) & 0x1F, RegWidth::X};
-        Register rm{IR & 0x1F, RegWidth::X};
+        Register rt{(IR >> 21) & 0x1F, regWidth};
+        Register rn{(IR >> 16) & 0x1F, regWidth};
+        Register rm{IR & 0x1F, regWidth};
         instr = InstructionBuilder::buildDataProcReg(convertToDataProcOp(opcode), rt, rn, rm);
         break;
     }
@@ -39,28 +40,38 @@ InstructionFormat CPU::decode() const {
     case OP_ANDI:
     case OP_ORRI:
     case OP_EORI: {
-        Register rt{(IR >> 21) & 0x1F, RegWidth::W};
-        Register rn{(IR >> 16) & 0x1F, RegWidth::W};
+        Register rt{(IR >> 21) & 0x1F, regWidth};
+        Register rn{(IR >> 16) & 0x1F, regWidth};
         Immediate imm{IR & 0xFFFF};
         instr = InstructionBuilder::buildDataProcImm(convertToDataProcOp(opcode), rt, rn, imm);
         break;
     }
 
     case OP_MOV: {
-        Register rt{(IR >> 21) & 0x1F, RegWidth::X};
-        Register rn{(IR >> 16) & 0x1F, RegWidth::X};
+        Register rt{(IR >> 21) & 0x1F, regWidth};
+        Register rn{(IR >> 16) & 0x1F, regWidth};
         instr = InstructionBuilder::buildMoveReg(rt, rn);
         break;
     }
     case OP_MOVI: {
-        Register rt{(IR >> 21) & 0x1F, RegWidth::W};
+        Register rt{(IR >> 21) & 0x1F, regWidth};
         Immediate imm{IR & 0xFFFF};
         instr = InstructionBuilder::buildMoveImm(rt, imm);
         break;
     }
 
-    case OP_CMP: 
-    case OP_CMPI: 
+    case OP_CMP: {
+        Register rt{(IR >> 21) & 0x1F, regWidth};
+        Register rn{(IR >> 16) & 0x1F, regWidth};
+        instr = InstructionBuilder::buildCompare(rt, rn);
+        break;
+    }
+    case OP_CMPI: {
+        Register rt{(IR >> 21) & 0x1F, regWidth};
+        Immediate imm{IR & 0xFFFF};
+        instr = InstructionBuilder::buildCompareImm(rt, imm);
+        break;
+    } 
 
     case OP_LDRB:
     case OP_LDRH:
@@ -73,35 +84,50 @@ InstructionFormat CPU::decode() const {
         Register rt{(IR >> 21) & 0x1F, RegWidth::X};
         Register rn{(IR >> 16) & 0x1F, RegWidth::X};
         Immediate offset{IR & 0xFFFF}; // 有符号偏移量
-        // 符号扩展
-        if (offset.value & 0x8000) {
+        if (offset.value & 0x8000) { // 符号扩展
             offset.value |= 0xFFFF0000;
         }
         instr = InstructionBuilder::buildLoadStore(convertToMemoryOp(opcode), rt, MemoryOperand{rn, offset});
         break;
     }
-        
-    // case OP_B:
-    //     instr.type = InstructionType::BRANCH_UNCOND;
-    //     instr.opcode = opcode;
-    //     instr.offset = IR & 0x03FFFFFF; // 26位偏移量
-    //     // 符号扩展
-    //     if (instr.offset & 0x02000000) {
-    //         instr.offset |= 0xFC000000;
-    //     }
-    //     break;
-        
-    // case OP_B_COND:
-    //     instr.type = InstructionType::BRANCH_COND;
-    //     instr.opcode = opcode;
-    //     instr.condition = (IR >> 22) & 0x0F;
-    //     instr.offset = IR & 0x03FFFFFF; // 26位偏移量
-    //     // 符号扩展
-    //     if (instr.offset & 0x02000000) {
-    //         instr.offset |= 0xFC000000;
-    //     }
-    //     break;
-        
+
+    case OP_B: {
+        Immediate offset = IR & 0x03FFFFFF;
+        if (offset.value & 0x02000000) { // 符号扩展
+            offset.value |= 0xFC000000;
+        }
+        instr = InstructionBuilder::buildBranch(offset);
+        break;
+    }
+
+    case OP_B_COND: {
+        BranchCondition condition = static_cast<BranchCondition>((IR >> 22) & 0x0F);
+        Immediate offset = IR & 0x03FFFFFF;
+        if (offset.value & 0x02000000) { // 符号扩展
+            offset.value |= 0xFC000000;
+        }
+        instr = InstructionBuilder::buildBranch(offset, condition);
+        break;
+    }
+
+    case OP_BL: {
+        Immediate offset = IR & 0x03FFFFFF;
+        instr = InstructionBuilder::buildBranch(offset, BranchCondition::AL, true);
+        break;
+    }
+
+    case OP_BLR: {
+        Register rt{(IR >> 21) & 0x1F, RegWidth::X};
+        instr = InstructionBuilder::buildBranchReg(rt, true);
+        break;
+    }
+
+    case OP_BR: {
+        Register rt{(IR >> 21) & 0x1F, RegWidth::X};
+        instr = InstructionBuilder::buildBranchReg(rt, false);
+        break;
+    }
+
     case OP_NOP:
     case OP_RET:
     case OP_HLT:
@@ -330,6 +356,12 @@ ALUOp CPU::convertToALUOp(DataProcOp op) const {
             return ALUOp::ORR;
         case DataProcOp::EOR:
             return ALUOp::EOR;
+        case DataProcOp::MUL:
+            return ALUOp::MUL;
+        case DataProcOp::SDIV:
+            return ALUOp::SDIV;
+        case DataProcOp::UDIV:
+            return ALUOp::UDIV;
         default:
             throw std::runtime_error("Unsupported data processing operation");
     }
@@ -350,8 +382,12 @@ DataProcOp CPU::convertToDataProcOp(uint8_t opcode) const {
         case OP_ORRI:
             return DataProcOp::ORR;
         case OP_EOR:
-        case OP_EORI:
-            return DataProcOp::EOR;
+        case OP_MUL:
+            return DataProcOp::MUL;
+        case OP_SDIV:
+            return DataProcOp::SDIV;
+        case OP_UDIV:
+            return DataProcOp::UDIV;
 
         // case OP_LSL:
         //     return DataProcOp::LSL;

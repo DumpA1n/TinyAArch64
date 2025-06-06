@@ -9,14 +9,15 @@ std::vector<uint32_t> createTestProgram() {
     Assembler Asm;
 
     std::string shellcode = R"(
-        mov r0, #-2
-        mov r1, #4
-        cmp r0, r1
-        b.ne L_cmp
+        mov w0, #-2
+        mov w1, #4
+        add w0, w0, #12
+        cmp w0, w1
+        b.le L_cmp
+        mul w2, w0, w1
         b L_exit
-        mul r2, r0, r1
     L_cmp:
-        mov r3, #10
+        mov w3, #10
     L_exit:
         hlt
     )";

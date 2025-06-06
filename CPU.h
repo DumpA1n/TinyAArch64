@@ -127,12 +127,12 @@ private:
     bool checkCondition(BranchCondition condition) const;
 
     // ====================== 寄存器操作 ======================
-    uint64_t getXReg(uint8_t reg) const;
-    void     setXReg(uint8_t reg, uint64_t value);
-    uint32_t getWReg(uint8_t reg) const;
-    void     setWReg(uint8_t reg, uint32_t value);
-    uint64_t getRegisterValue(const Register& reg);
-    void     setRegisterValue(const Register& reg, uint64_t value);
+    inline uint64_t getXReg(uint8_t reg) const;
+    inline void     setXReg(uint8_t reg, uint64_t value);
+    inline uint32_t getWReg(uint8_t reg) const;
+    inline void     setWReg(uint8_t reg, uint32_t value);
+    inline uint64_t getRegisterValue(const Register& reg);
+    inline void     setRegisterValue(const Register& reg, uint64_t value);
 
     // ====================== 内存访问 ======================
     template<typename T>

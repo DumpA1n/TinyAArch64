@@ -16,10 +16,10 @@ struct Register {
     Register(uint8_t num = 0, RegWidth w = RegWidth::X) 
         : number(num), width(w) {}
     
-    bool is32Bit() const { return width == RegWidth::W; }
-    bool is64Bit() const { return width == RegWidth::X; }
+    inline bool is32Bit() const { return width == RegWidth::W; }
+    inline bool is64Bit() const { return width == RegWidth::X; }
     
-    std::string toString() const {
+    inline std::string toString() const {
         return (width == RegWidth::W ? "W" : "X") + std::to_string(number);
     }
 };
@@ -31,9 +31,9 @@ struct StatusRegister {
     bool C; // Carry
     bool V; // Overflow
     
-    void reset() { N = Z = C = V = false; }
+    inline void reset() { N = Z = C = V = false; }
     
-    std::string toString() const {
+    inline std::string toString() const {
         return std::string("N=") + (N ? "1" : "0") + 
                           " Z="  + (Z ? "1" : "0") +
                           " C="  + (C ? "1" : "0") +

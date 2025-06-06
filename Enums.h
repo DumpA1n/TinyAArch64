@@ -43,10 +43,11 @@ enum Opcode {
     OP_B_COND  = 0b011010,
     OP_BL      = 0b011011,
     OP_BLR     = 0b011100,
+    OP_BR      = 0b011101,
 
-    OP_NOP     = 0b111101,
-    OP_RET     = 0b111110,
-    OP_HLT     = 0b111111
+    OP_RET     = 0b011110,
+    OP_HLT     = 0b011111,
+    OP_NOP     = 0b111111
 };
 
 // 分支条件
@@ -105,6 +106,7 @@ enum class DataProcOp {
     // 算术运算
     ADD, ADDS, SUB, SUBS,
     ADC, ADCS, SBC, SBCS,
+    MUL, SDIV, UDIV,
     
     // 逻辑运算
     AND, ANDS, ORR, EOR,
