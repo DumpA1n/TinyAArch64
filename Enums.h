@@ -1,5 +1,54 @@
 #pragma once
 
+// ALU操作定义
+enum class ALUOp {
+    ADD, SUB, MUL, SDIV, UDIV, AND, ORR, EOR, NOT, LSL, LSR, ASR, CMP
+};
+
+// 指令操作码
+enum Opcode {
+    OP_ADD     = 0b000000,
+    OP_ADDI    = 0b000001,
+    OP_SUB     = 0b000010,
+    OP_SUBI    = 0b000011,
+
+    OP_AND     = 0b000100,
+    OP_ANDI    = 0b000101,
+    OP_ORR     = 0b000110,
+    OP_ORRI    = 0b000111,
+    OP_EOR     = 0b001000,
+    OP_EORI    = 0b001001,
+
+    OP_MOV     = 0b001010,
+    OP_MOVI    = 0b001011,
+
+    OP_CMP     = 0b001100,
+    OP_CMPI    = 0b001101,
+
+    OP_MUL     = 0b001110,
+    OP_SDIV    = 0b001111,
+    OP_UDIV    = 0b010000,
+
+    OP_LDRB    = 0b010001,
+    OP_LDRH    = 0b010010,
+    OP_LDRW    = 0b010011,
+    OP_LDRD    = 0b010100,
+
+    OP_STRB    = 0b010101,
+    OP_STRH    = 0b010110,
+    OP_STRW    = 0b010111,
+    OP_STRD    = 0b011000,
+
+    OP_B       = 0b011001,
+    OP_B_COND  = 0b011010,
+    OP_BL      = 0b011011,
+    OP_BLR     = 0b011100,
+
+    OP_NOP     = 0b111101,
+    OP_RET     = 0b111110,
+    OP_HLT     = 0b111111
+};
+
 // 分支条件
 enum class BranchCondition {
     EQ = 0b0000,  // Equal (Z=1)
@@ -75,4 +124,11 @@ enum class MemoryOp {
     STORE_HALF,     // STRH
     STORE_WORD,     // STR (32-bit)
     STORE_DWORD     // STR (64-bit)
+};
+
+// 系统操作类型
+enum class SystemOp {
+    NOP,
+    RET, 
+    HLT
 };

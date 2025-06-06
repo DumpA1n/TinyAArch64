@@ -8,87 +8,13 @@
 #include <map>
 #include <stdexcept>
 #include <array>
+#include <utility>
 
 #include "Assembler.h"
-
-// ========================== 指令系统设计 ==========================
-// 指令格式定义
-enum class InstructionType { R_TYPE, I_TYPE, D_TYPE, B_TYPE };
-
-struct InstructionFormat {
-    InstructionType type;
-    uint8_t opcode;
-    uint8_t rd;    // R型和I型的目标寄存器
-    uint8_t rn;    // R型、I型、D型的第一个源寄存器
-    uint8_t rm;    // R型的第二个源寄存器
-    uint8_t rt;    // D型的目标寄存器
-    uint16_t immediate; // I型的立即数
-    uint8_t condition; // B型的条件码
-    int8_t offset;   // D型和B型的偏移量
-};
-
-// 指令操作码定义
-enum Opcode {
-    OP_ADD = 0b000000,
-    OP_ADDI = 0b000001,
-    OP_SUB = 0b000010,
-    OP_SUBI = 0b000011,
-    OP_AND = 0b000100,
-    OP_ANDI = 0b000101,
-    OP_ORR = 0b000110,
-    OP_ORRI = 0b000111,
-    OP_EOR = 0b001000,
-    OP_EORI = 0b001001,
-    OP_MOV = 0b001010,
-    OP_MOVI = 0b001011,
-    OP_LDR = 0b001100,
-    OP_STR = 0b001101,
-    OP_B = 0b001110,
-    OP_B_COND = 0b001111,
-    OP_CMP = 0b010000,
-    OP_MUL = 0b010001,
-    OP_SDIV = 0b010010,
-    OP_UDIV = 0b010011,
-    OP_BL = 0b010100,
-    OP_BLR = 0b010101,
-    OP_NOP = 0b111101,
-    OP_RET = 0b111110,
-    OP_HLT = 0b111111
-};
-
-// 条件码定义
-enum ConditionCode {
-    COND_EQ = 0b0000,  // Equal (Z=1)
-    COND_NE = 0b0001,  // Not equal (Z=0)
-    COND_LT = 0b0010,  // Signed less than (N!=V)
-    COND_GE = 0b0011,  // Signed greater than or equal (N=V)
-    COND_GT = 0b0100,  // Signed greater than (Z=0 and N=V)
-    COND_LE = 0b0101,  // Signed less than or equal (Z=1 or N!=V)
-    COND_AL = 0b1111   // Always (unconditional)
-};
+#include "Instruction.h"
+#include "Enums.h"
 
 // ========================== 数据通路组件 ==========================
-// 状态寄存器 (NZCV)
-struct StatusRegister {
-    bool N; // Negative
-    bool Z; // Zero
-    bool C; // Carry
-    bool V; // Overflow
-    
-    void reset() { N = Z = C = V = false; }
-    
-    std::string toString() const {
-        return std::string("N=") + (N ? "1" : "0") + 
-                          " Z="  + (Z ? "1" : "0") +
-                          " C="  + (C ? "1" : "0") +
-                          " V="  + (V ? "1" : "0");
-    }
-};
-
-// ALU操作定义
-enum class ALUOp {
-    ADD, SUB, MUL, SDIV, UDIV, AND, ORR, EOR, NOT, LSL, LSR, ASR, CMP, PASS_A, PASS_B
-};
 
 // 模拟的CPU类
 class CPU {
@@ -179,21 +105,42 @@ private:
     // ====================== 执行阶段 ======================
     void execute(const InstructionFormat& instr);
 
+    // ====================== 指令执行 ======================
+    void executeDataProcessing(const InstructionFormat& instr);
+    void executeLoadStore(const InstructionFormat& instr);
+    void executeBranch(const InstructionFormat& instr);
+    void executeCompare(const InstructionFormat& instr);
+    void executeMove(const InstructionFormat& instr);
+    void executeMultiplyDivide(const InstructionFormat& instr);
+    void executeSystem(const InstructionFormat& instr);
+
+    // ====================== 数据转换 ======================
+    ALUOp convertToALUOp(DataProcOp op) const;
+    DataProcOp convertToDataProcOp(uint8_t opcode) const;
+    MemoryOp convertToMemoryOp(uint8_t opcode) const;
+    SystemOp convertToSystemOp(uint8_t opcode) const;
+
     // ====================== ALU操作 ======================
     void aluOperation(ALUOp op, uint8_t rd, uint64_t a, uint64_t b, bool is32bit = false);
 
     // ====================== 条件检查 ======================
-    bool checkCondition(uint8_t condition) const;
+    bool checkCondition(BranchCondition condition) const;
+
+    // ====================== 寄存器操作 ======================
+    uint64_t getXReg(uint8_t reg) const;
+    void     setXReg(uint8_t reg, uint64_t value);
+    uint32_t getWReg(uint8_t reg) const;
+    void     setWReg(uint8_t reg, uint32_t value);
+    uint64_t getRegisterValue(const Register& reg);
+    void     setRegisterValue(const Register& reg, uint64_t value);
 
     // ====================== 内存访问 ======================
     template<typename T>
     T readMemory(uint64_t address) const {
         constexpr size_t size = sizeof(T);
-
         if (address + size > MEM_SIZE) {
             throw std::runtime_error("Memory read out of bounds: " + std::to_string(address));
         }
-        
         T value = 0;
         for (size_t i = 0; i < size; ++i) {
             value |= static_cast<uint32_t>(memory[address + i]) << (i * 8);
@@ -204,35 +151,11 @@ private:
     template<typename T>
     void writeMemory(uint64_t address, T value) {
         constexpr size_t size = sizeof(T);
-
         if (address + size > MEM_SIZE) {
             throw std::runtime_error("Memory write out of bounds: " + std::to_string(address));
         }
-        
         for (size_t i = 0; i < size; ++i) {
             memory[address + i] = (value >> (i * 8)) & 0xFF;
         }
-    }
-
-    // ====================== 寄存器访问 ======================
-    uint64_t getXReg(uint8_t reg) const {
-        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
-        return regs[reg];
-    }
-    
-    uint32_t getWReg(uint8_t reg) const {
-        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
-        return static_cast<uint32_t>(regs[reg] & 0xFFFFFFFF);
-    }
-    
-    void setXReg(uint8_t reg, uint64_t value) {
-        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
-        regs[reg] = value;
-    }
-    
-    void setWReg(uint8_t reg, uint32_t value) {
-        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
-        // 写入W寄存器时，高32位清零
-        regs[reg] = static_cast<uint64_t>(value);
     }
 };

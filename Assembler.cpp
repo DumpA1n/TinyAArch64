@@ -15,21 +15,21 @@ static std::unordered_map<std::string, std::pair<Opcode, Opcode>> OpcodeMap = {
     {"EOR", {OP_EOR, OP_EORI}}
 };
 
-static std::unordered_map<std::string, ConditionCode> B_COND_Map = {
-    {"B.EQ", COND_EQ},
-    {"B.NE", COND_NE},
-    {"B.LT", COND_LT},
-    {"B.GE", COND_GE},
-    {"B.GT", COND_GT},
-    {"B.LE", COND_LE},
-    {"B.AL", COND_AL},
-    {"BEQ",  COND_EQ},
-    {"BNE",  COND_NE},
-    {"BLT",  COND_LT},
-    {"BGE",  COND_GE},
-    {"BGT",  COND_GT},
-    {"BLE",  COND_LE},
-    {"BAL",  COND_AL}
+static std::unordered_map<std::string, enum class BranchCondition> B_COND_Map = {
+    {"B.EQ", BranchCondition::EQ},
+    {"B.NE", BranchCondition::NE},
+    {"B.LT", BranchCondition::LT},
+    {"B.GE", BranchCondition::GE},
+    {"B.GT", BranchCondition::GT},
+    {"B.LE", BranchCondition::LE},
+    {"B.AL", BranchCondition::AL},
+    {"BEQ",  BranchCondition::EQ},
+    {"BNE",  BranchCondition::NE},
+    {"BLT",  BranchCondition::LT},
+    {"BGE",  BranchCondition::GE},
+    {"BGT",  BranchCondition::GT},
+    {"BLE",  BranchCondition::LE},
+    {"BAL",  BranchCondition::AL}
 };
 
 std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLines) {
@@ -155,7 +155,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             if (tokens.size() < 2) throw std::runtime_error("Too few operands, opcode: " + opcode);
             std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
-            uint8_t condition = B_COND_Map[opcode];
+            uint8_t condition = static_cast<uint8_t>(B_COND_Map[opcode]);
             uint32_t instr = (OP_B_COND << 26) | (((condition & 0x0F) << 22));
             machineCode.push_back(instr); // 占位，后续填充
 

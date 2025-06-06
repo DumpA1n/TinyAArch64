@@ -8,6 +8,76 @@
 #include "Immdiate.h"
 #include "Enums.h"
 
+// 内存操作数（用于load/store指令）
+struct MemoryOperand {
+    Register baseReg;       // 基址寄存器
+    Register indexReg;      // 索引寄存器（可选）
+    Immediate offset;       // 偏移量
+    bool hasIndex;          // 是否有索引寄存器
+    bool preIndex;          // 是否为前索引 [Rn, #imm]!
+    bool postIndex;         // 是否为后索引 [Rn], #imm
+    
+    MemoryOperand(Register base, Immediate off = Immediate(0))
+        : baseReg(base), offset(off), hasIndex(false), 
+          preIndex(false), postIndex(false) {}
+          
+    MemoryOperand(Register base, Register index)
+        : baseReg(base), indexReg(index), hasIndex(true),
+          preIndex(false), postIndex(false) {}
+};
+
+struct DataProcInfo {
+    DataProcOp operation;
+    Register rd;
+    Register rn;
+    Register rm;
+    Immediate imm;
+    bool updateFlags;
+    uint8_t shift;
+};
+
+struct MemoryInfo {
+    MemoryOp operation;
+    Register rt;
+    MemoryOperand address;
+    uint8_t size;
+};
+
+struct BranchInfo {
+    BranchCondition condition;
+    Register target;
+    Immediate offset;
+    bool isLink;
+};
+
+struct CompareInfo {
+    Register rn;
+    Register rm;
+    Immediate imm;
+    bool useImmediate;
+};
+
+struct MoveInfo {
+    Register rd;
+    Register rn;
+    Immediate imm;
+    bool useImmediate;
+    uint8_t shift;
+};
+
+struct MulDivInfo {
+    Register rd;
+    Register rn;
+    Register rm;
+    Register ra;
+    bool isSigned;
+    bool hasAccumulate;
+};
+
+struct SystemInfo {
+    SystemOp operation;
+};
+
 // 指令格式结构体
 struct InstructionFormat {
     InstructionType type;
@@ -15,71 +85,26 @@ struct InstructionFormat {
     
     // 使用 variant 来存储不同类型指令的特定数据
     std::variant<
-        struct {  // DATA_PROCESSING_REG/IMM
-            DataProcOp operation;
-            Register rd;        // 目标寄存器
-            Register rn;        // 第一个操作数寄存器
-            Register rm;        // 第二个操作数寄存器 (仅reg类型)
-            Immediate imm;      // 立即数 (仅imm类型)
-            bool updateFlags;   // 是否更新标志位 (ADDS vs ADD)
-            uint8_t shift;      // 移位量
-        } dataProcInfo,
-        
-        struct {  // LOAD_STORE
-            MemoryOp operation;
-            Register rt;        // 目标/源寄存器
-            MemoryOperand address;
-            uint8_t size;       // 访问大小 (1,2,4,8字节)
-        } memoryInfo,
-        
-        struct {  // BRANCH_*
-            BranchCondition condition;  // 分支条件
-            Register target;            // 目标寄存器 (BR/BLR)
-            Immediate offset;           // 分支偏移
-            bool isLink;               // 是否保存返回地址
-        } branchInfo,
-        
-        struct {  // COMPARE
-            Register rn;        // 第一个比较寄存器
-            Register rm;        // 第二个比较寄存器
-            Immediate imm;      // 立即数比较值
-            bool useImmediate;  // 是否使用立即数
-        } compareInfo,
-        
-        struct {  // MOVE_*
-            Register rd;        // 目标寄存器
-            Register rn;        // 源寄存器
-            Immediate imm;      // 立即数
-            bool useImmediate;  // 是否使用立即数
-            uint8_t shift;      // 移位量 (MOVK使用)
-        } moveInfo,
-        
-        struct {  // MULTIPLY/DIVIDE
-            Register rd;        // 目标寄存器
-            Register rn;        // 第一个操作数
-            Register rm;        // 第二个操作数
-            Register ra;        // 累加寄存器 (MADD/MSUB)
-            bool isSigned;      // 是否有符号运算
-            bool hasAccumulate; // 是否有累加操作
-        } mulDivInfo,
-        
-        struct {  // SYSTEM
-            uint16_t sysOp;     // 系统操作码
-        } systemInfo
-        
+        DataProcInfo,
+        MemoryInfo,
+        BranchInfo,
+        CompareInfo,
+        MoveInfo,
+        MulDivInfo,
+        SystemInfo
     > details;
     
     // 便利方法
     bool is32BitOp() const {
         return std::visit([](const auto& info) -> bool {
             using T = std::decay_t<decltype(info)>;
-            if constexpr (std::is_same_v<T, decltype(dataProcInfo)>) {
+            if constexpr (std::is_same_v<T, DataProcInfo>) {
                 return info.rd.is32Bit();
-            } else if constexpr (std::is_same_v<T, decltype(memoryInfo)>) {
+            } else if constexpr (std::is_same_v<T, MemoryInfo>) {
                 return info.rt.is32Bit();
-            } else if constexpr (std::is_same_v<T, decltype(moveInfo)>) {
+            } else if constexpr (std::is_same_v<T, MoveInfo>) {
                 return info.rd.is32Bit();
-            } else if constexpr (std::is_same_v<T, decltype(mulDivInfo)>) {
+            } else if constexpr (std::is_same_v<T, MulDivInfo>) {
                 return info.rd.is32Bit();
             }
             return false;
@@ -105,7 +130,7 @@ public:
         
         InstructionFormat instr;
         instr.type = InstructionType::DATA_PROCESSING_REG;
-        instr.details = decltype(instr.dataProcInfo){
+        instr.details = DataProcInfo{
             op, rd, rn, rm, Immediate(), updateFlags, shift
         };
         return instr;
@@ -117,7 +142,7 @@ public:
         
         InstructionFormat instr;
         instr.type = InstructionType::DATA_PROCESSING_IMM;
-        instr.details = decltype(instr.dataProcInfo){
+        instr.details = DataProcInfo{
             op, rd, rn, Register(), imm, updateFlags, 0
         };
         return instr;
@@ -145,7 +170,7 @@ public:
                 size = 4; break;
         }
         
-        instr.details = decltype(instr.memoryInfo){op, rt, addr, size};
+        instr.details = MemoryInfo{op, rt, addr, size};
         return instr;
     }
     
@@ -158,7 +183,7 @@ public:
         instr.type = (cond == BranchCondition::AL) ? 
             InstructionType::BRANCH_UNCOND : InstructionType::BRANCH_COND;
         
-        instr.details = decltype(instr.branchInfo){
+        instr.details = BranchInfo{
             cond, Register(), offset, isLink
         };
         return instr;
@@ -168,14 +193,18 @@ public:
     static InstructionFormat buildCompare(Register rn, Register rm) {
         InstructionFormat instr;
         instr.type = InstructionType::COMPARE;
-        instr.details = decltype(instr.compareInfo){rn, rm, Immediate(), false};
+        instr.details = CompareInfo{
+            rn, rm, Immediate(), false
+        };
         return instr;
     }
     
     static InstructionFormat buildCompareImm(Register rn, Immediate imm) {
         InstructionFormat instr;
         instr.type = InstructionType::COMPARE;
-        instr.details = decltype(instr.compareInfo){rn, Register(), imm, true};
+        instr.details = CompareInfo{
+            rn, Register(), imm, true
+        };
         return instr;
     }
     
@@ -183,7 +212,7 @@ public:
     static InstructionFormat buildMoveReg(Register rd, Register rn) {
         InstructionFormat instr;
         instr.type = InstructionType::MOVE_REG;
-        instr.details = decltype(instr.moveInfo){
+        instr.details = MoveInfo{
             rd, rn, Immediate(), false, 0
         };
         return instr;
@@ -192,9 +221,16 @@ public:
     static InstructionFormat buildMoveImm(Register rd, Immediate imm) {
         InstructionFormat instr;
         instr.type = InstructionType::MOVE_IMM;
-        instr.details = decltype(instr.moveInfo){
+        instr.details = MoveInfo{
             rd, Register(), imm, true, 0
         };
+        return instr;
+    }
+    
+    static InstructionFormat buildSystem(SystemOp op) {
+        InstructionFormat instr;
+        instr.type = InstructionType::SYSTEM;
+        instr.details = SystemInfo{op};
         return instr;
     }
 };
