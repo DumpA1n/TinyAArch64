@@ -217,76 +217,141 @@ void CPU::execute(const InstructionFormat& instr) {
 }
 
 // ====================== ALU操作 ======================
-void CPU::aluOperation(ALUOp op, uint8_t rd, int64_t a, int64_t b) {
-    int64_t result = 0;
+void CPU::aluOperation(ALUOp op, uint8_t rd, uint64_t a, uint64_t b, bool is32bit) {
+    uint64_t result = 0;
     bool carry = false;
     bool overflow = false;
     
-    switch (op) {
-    case ALUOp::ADD:
-        result = a + b;
-        // 进位标志：无符号溢出
-        carry = (result < a);
-        // 溢出标志：有符号溢出
-        overflow = ((a ^ result) & (b ^ result)) >> 31;
-        break;
+    if (is32bit) {
+        // 32位操作：截断输入为32位
+        int32_t a32 = static_cast<int32_t>(a & 0xFFFFFFFF);
+        int32_t b32 = static_cast<int32_t>(b & 0xFFFFFFFF);
+        int32_t result32 = 0;
         
-    case ALUOp::SUB:
-        result = a - b;
-        // 进位标志：无符号无借位
-        carry = (a >= b);
-        // 溢出标志：有符号溢出
-        overflow = ((a ^ b) & (a ^ result)) >> 31;
-        break;
-        
-    case ALUOp::MUL:
-        result = a * b;
-        break;
-
-    case ALUOp::SDIV:
-        if (b == 0) {
-            throw std::runtime_error("Division by zero");
+        switch (op) {
+        case ALUOp::ADD:
+            result32 = a32 + b32;
+            carry = (static_cast<uint32_t>(result32) < static_cast<uint32_t>(a32));
+            overflow = ((a32 ^ result32) & (b32 ^ result32)) >> 31;
+            break;
+            
+        case ALUOp::SUB:
+            result32 = a32 - b32;
+            carry = (static_cast<uint32_t>(a32) >= static_cast<uint32_t>(b32));
+            overflow = ((a32 ^ b32) & (a32 ^ result32)) >> 31;
+            break;
+            
+        case ALUOp::MUL:
+            result32 = a32 * b32;
+            break;
+            
+        case ALUOp::SDIV:
+            if (b32 == 0) throw std::runtime_error("Division by zero");
+            result32 = a32 / b32;
+            break;
+            
+        case ALUOp::UDIV:
+            if (b32 == 0) throw std::runtime_error("Division by zero");
+            result32 = static_cast<uint32_t>(a32) / static_cast<uint32_t>(b32);
+            break;
+            
+        case ALUOp::AND:
+            result32 = a32 & b32;
+            break;
+            
+        case ALUOp::ORR:
+            result32 = a32 | b32;
+            break;
+            
+        case ALUOp::EOR:
+            result32 = a32 ^ b32;
+            break;
+            
+        case ALUOp::CMP:
+            result32 = a32 - b32;
+            statusReg.N = (result32 >> 31) & 1;
+            statusReg.Z = (result32 == 0);
+            statusReg.C = (static_cast<uint32_t>(a32) >= static_cast<uint32_t>(b32));
+            statusReg.V = ((a32 ^ b32) & (a32 ^ result32)) >> 31;
+            return;
+            
+        default:
+            throw std::runtime_error("Unsupported ALU operation");
         }
-        result = static_cast<int32_t>(a) / static_cast<int32_t>(b);
-        break;
-
-    case ALUOp::UDIV:
-        if (b == 0) {
-            throw std::runtime_error("Division by zero");
+        
+        result = static_cast<uint64_t>(static_cast<uint32_t>(result32));
+        
+        // 更新状态寄存器（基于32位结果）
+        statusReg.N = (result32 >> 31) & 1;
+        statusReg.Z = (result32 == 0);
+        statusReg.C = carry;
+        statusReg.V = overflow;
+        
+    } else {
+        // 64位操作
+        int64_t a64 = static_cast<int64_t>(a);
+        int64_t b64 = static_cast<int64_t>(b);
+        int64_t result64 = 0;
+        
+        switch (op) {
+        case ALUOp::ADD:
+            result64 = a64 + b64;
+            carry = (static_cast<uint64_t>(result64) < static_cast<uint64_t>(a64));
+            overflow = ((a64 ^ result64) & (b64 ^ result64)) >> 63;
+            break;
+            
+        case ALUOp::SUB:
+            result64 = a64 - b64;
+            carry = (static_cast<uint64_t>(a64) >= static_cast<uint64_t>(b64));
+            overflow = ((a64 ^ b64) & (a64 ^ result64)) >> 63;
+            break;
+            
+        case ALUOp::MUL:
+            result64 = a64 * b64;
+            break;
+            
+        case ALUOp::SDIV:
+            if (b64 == 0) throw std::runtime_error("Division by zero");
+            result64 = a64 / b64;
+            break;
+            
+        case ALUOp::UDIV:
+            if (b64 == 0) throw std::runtime_error("Division by zero");
+            result64 = static_cast<uint64_t>(a64) / static_cast<uint64_t>(b64);
+            break;
+            
+        case ALUOp::AND:
+            result64 = a64 & b64;
+            break;
+            
+        case ALUOp::ORR:
+            result64 = a64 | b64;
+            break;
+            
+        case ALUOp::EOR:
+            result64 = a64 ^ b64;
+            break;
+            
+        case ALUOp::CMP:
+            result64 = a64 - b64;
+            statusReg.N = (result64 >> 63) & 1;
+            statusReg.Z = (result64 == 0);
+            statusReg.C = (static_cast<uint64_t>(a64) >= static_cast<uint64_t>(b64));
+            statusReg.V = ((a64 ^ b64) & (a64 ^ result64)) >> 63;
+            return;
+            
+        default:
+            throw std::runtime_error("Unsupported ALU operation");
         }
-        result = a / b;
-        break;
-
-    case ALUOp::AND:
-        result = a & b;
-        break;
         
-    case ALUOp::ORR:
-        result = a | b;
-        break;
+        result = static_cast<uint64_t>(result64);
         
-    case ALUOp::EOR:
-        result = a ^ b;
-        break;
-        
-    case ALUOp::CMP:
-        result = a - b;
-        // 设置标志位但不存储结果
-        statusReg.N = (result >> 31) & 1;
-        statusReg.Z = (result == 0);
-        statusReg.C = (a >= b); // 无借位
-        statusReg.V = ((a ^ b) & (a ^ result)) >> 31;
-        return; // 不写回寄存器
-        
-    default:
-        throw std::runtime_error("Unsupported ALU operation");
+        // 更新状态寄存器（基于64位结果）
+        statusReg.N = (result64 >> 63) & 1;
+        statusReg.Z = (result64 == 0);
+        statusReg.C = carry;
+        statusReg.V = overflow;
     }
-    
-    // 更新状态寄存器
-    statusReg.N = (result >> 31) & 1;
-    statusReg.Z = (result == 0);
-    statusReg.C = carry;
-    statusReg.V = overflow;
     
     // 写回结果到寄存器
     if (rd < NUM_REGS) {

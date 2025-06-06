@@ -29,7 +29,7 @@ std::vector<uint32_t> createTestProgram() {
     };
 
     std::string shellcode = R"(
-        mov r0, #2
+        mov r0, #-2
         mov r1, #4
         cmp r0, r1
         b.ne L_cmp

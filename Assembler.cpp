@@ -87,8 +87,10 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 bool isHex = false;
                 if (tokens[2].rfind("#0x", 0) == 0 || tokens[2].rfind("#0X", 0) == 0)
                     isHex = true;
-                uint32_t imm_val = std::stoul(tokens[2].substr(1), nullptr, isHex ? 16 : 10);
-                instr = (OP_MOVI << 26) | (rd_num << 21) | (0 << 16) | imm_val;
+                uint32_t imm_val = std::stoi(tokens[2].substr(1), nullptr, isHex ? 16 : 10);
+                uint32_t imm_val_16 = static_cast<uint16_t>(imm_val & 0xFFFF); // 截断低16位
+                instr = (OP_MOVI << 26) | (rd_num << 21) | (0 << 16) | imm_val_16;
+                // instr = (OP_MOVI << 26) | (rd_num << 21) | (0 << 16) | imm_val;
             } else {
                 std::cerr << "Invalid Instruction: " << trimmed << std::endl;
             }
@@ -108,7 +110,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 bool isHex = false;
                 if (tokens[3].rfind("#0x", 0) == 0 || tokens[3].rfind("#0X", 0) == 0)
                     isHex = true;
-                uint32_t imm_val = std::stoul(tokens[3].substr(1), nullptr, isHex ? 16 : 10);
+                uint32_t imm_val = std::stoi(tokens[3].substr(1), nullptr, isHex ? 16 : 10);
                 instr = (OpcodeMap[opcode].second << 26) | (rd_num << 21) | (rn_num << 16) | imm_val;
             } else {
                 std::cerr << "Invalid Instruction: " << trimmed << std::endl;

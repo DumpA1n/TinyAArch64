@@ -180,7 +180,7 @@ private:
     void execute(const InstructionFormat& instr);
 
     // ====================== ALU操作 ======================
-    void aluOperation(ALUOp op, uint8_t rd, int64_t a, int64_t b);
+    void aluOperation(ALUOp op, uint8_t rd, uint64_t a, uint64_t b, bool is32bit = false);
 
     // ====================== 条件检查 ======================
     bool checkCondition(uint8_t condition) const;
@@ -212,5 +212,27 @@ private:
         for (size_t i = 0; i < size; ++i) {
             memory[address + i] = (value >> (i * 8)) & 0xFF;
         }
+    }
+
+    // ====================== 寄存器访问 ======================
+    uint64_t getXReg(uint8_t reg) const {
+        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
+        return regs[reg];
+    }
+    
+    uint32_t getWReg(uint8_t reg) const {
+        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
+        return static_cast<uint32_t>(regs[reg] & 0xFFFFFFFF);
+    }
+    
+    void setXReg(uint8_t reg, uint64_t value) {
+        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
+        regs[reg] = value;
+    }
+    
+    void setWReg(uint8_t reg, uint32_t value) {
+        if (reg >= NUM_REGS) throw std::runtime_error("Invalid register number");
+        // 写入W寄存器时，高32位清零
+        regs[reg] = static_cast<uint64_t>(value);
     }
 };
