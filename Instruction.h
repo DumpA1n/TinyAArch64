@@ -81,7 +81,6 @@ struct SystemInfo {
 // 指令格式结构体
 struct InstructionFormat {
     InstructionType type;
-    uint8_t opcode;         // 原始操作码
     
     // 使用 variant 来存储不同类型指令的特定数据
     std::variant<
@@ -93,8 +92,7 @@ struct InstructionFormat {
         MulDivInfo,
         SystemInfo
     > details;
-    
-    // 便利方法
+
     bool is32BitOp() const {
         return std::visit([](const auto& info) -> bool {
             using T = std::decay_t<decltype(info)>;
@@ -114,8 +112,8 @@ struct InstructionFormat {
     bool is64BitOp() const { return !is32BitOp(); }
     
     std::string toString() const {
-        // 返回指令的字符串表示
-        return "InstructionFormat::toString() - TODO";
+        // TODO
+        return "InstructionFormat::toString()";
     }
 };
 

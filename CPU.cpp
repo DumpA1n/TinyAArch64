@@ -430,6 +430,30 @@ SystemOp CPU::convertToSystemOp(uint8_t opcode) const {
     }
 }
 
+BranchCondition CPU::convertToBranchCondition(uint8_t condition) const {
+    switch (condition) {
+        case 0b0000: return BranchCondition::EQ;
+        case 0b0001: return BranchCondition::NE;
+        case 0b0010: return BranchCondition::CS;
+        case 0b0011: return BranchCondition::CC;
+        case 0b0100: return BranchCondition::MI;
+        case 0b0101: return BranchCondition::PL;
+        case 0b0110: return BranchCondition::VS;
+        case 0b0111: return BranchCondition::VC;
+        case 0b1000: return BranchCondition::HI;
+        case 0b1001: return BranchCondition::LS;
+        case 0b1010: return BranchCondition::GE;
+        case 0b1011: return BranchCondition::LT;
+        case 0b1100: return BranchCondition::GT;
+        case 0b1101: return BranchCondition::LE;
+        case 0b1110: return BranchCondition::AL;
+        case 0b1111: return BranchCondition::NV;
+
+        default:
+            throw std::runtime_error("Unsupported opcode for DataProcOp");
+    }
+}
+
 // ====================== ALU操作 ======================
 void CPU::aluOperation(ALUOp op, uint8_t rd, uint64_t a, uint64_t b, bool is32bit) {
     uint64_t result = 0;

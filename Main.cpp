@@ -8,25 +8,49 @@ std::vector<uint32_t> createTestProgram() {
     std::vector<uint32_t> program;
     Assembler Asm;
 
+    // std::string shellcode = R"(
+    // start:
+    //     ldr w5, [x0, #0x4]
+    //     add w6, w5, #1
+    //     str w6, [x0, #0x60]
+    //     ldr w7, [x0, #0x60]
+    //     mov w0, #-2
+    //     mov w1, #4
+    //     add w0, w0, #12
+    //     cmp w0, w1
+    //     b.le L_cmp
+    //     mul w2, w0, w1
+    //     b L_exit
+    // L_cmp:
+    //     mov w3, #10
+    // L_exit:
+    //     hlt
+    // data_i:
+    //     .int 123 
+    // data_f:
+    //     .float 1.23
+    // )";
+
     std::string shellcode = R"(
-    .data:
-        
-    .start:
-        ldr w5, [x0, #0x4]
-        add w6, w5, #1
-        str w6, [x0, #0x60]
-        ldr w7, [x0, #0x60]
-        mov w0, #-2
-        mov w1, #4
-        add w0, w0, #12
-        cmp w0, w1
-        b.le L_cmp
-        mul w2, w0, w1
-        b L_exit
-    L_cmp:
-        mov w3, #10
-    L_exit:
-        hlt
+        sub     sp, sp, #16
+        mov     w0, #0
+        str     w0, [sp, #12]
+        str     w0, [sp, #8]
+        b       .L2
+    .L3:
+        ldr     w1, [sp, #12]
+        ldr     w0, [sp, #8]
+        add     w0, w1, w0
+        str     w0, [sp, #12]
+        ldr     w0, [sp, #8]
+        add     w0, w0, #1
+        str     w0, [sp, #8]
+    .L2:
+        ldr     w0, [sp, #8]
+        cmp     w0, #100
+        ble     .L3
+        add     sp, sp, #16
+        HLT
     )";
 
     return Asm.assemble(shellcode);
@@ -49,13 +73,16 @@ int main() {
         
         // 执行程序
         try {
-            for (int i = 0; i < 50; i++) { // 最多执行50条指令
+            for (int i = 0; i < 99999; i++) { // 最多执行50条指令
                 std::cout << ">>> Step " << (i + 1) << " <<<" << std::endl;
                 cpu.step();
                 cpu.printState();
             }
         } 
         catch (const std::exception& e) {
+            if (std::string(e.what()).compare("HLT instruction executed") == 0) {
+                cpu.printState();
+            }
             std::cout << "Execution stopped: " << e.what() << std::endl;
         }
         

@@ -19,9 +19,11 @@
 // 模拟的CPU类
 class CPU {
 public:
-    static const int NUM_REGS = 32;   // 31个通用寄存器
-    static const int MEM_SIZE = 1048576; // 1MB内存
-    
+    static const int32_t NUM_REGS     = 32;       // 31个通用寄存器
+    static const uint64_t MEM_SIZE    = 0x100000; // 1MB内存
+    static const uint64_t STACK_BASE  = 0x100000; // 栈顶
+    static const uint64_t STACK_LIMIT = 0x000800; // 栈底
+
     CPU() : memory(MEM_SIZE, 0), PC(0), IR(0), statusReg{} {
         reset();
     }
@@ -32,6 +34,7 @@ public:
         statusReg.reset();
         std::fill(regs.begin(), regs.end(), 0);
         std::fill(memory.begin(), memory.end(), 0);
+        regs[31] = STACK_BASE; // X31作为SP寄存器
     }
 
     // 加载程序到内存
@@ -64,14 +67,14 @@ public:
     // 打印当前状态
     void printState() const {
         std::cout << "===== CPU State =====" << std::endl;
-        std::cout << "PC: 0x" << std::hex << std::setw(8) << std::setfill('0') << PC << std::dec << std::endl;
+        std::cout << "PC: 0x" << std::hex << std::setw(16) << std::setfill('0') << PC << std::dec << std::endl;
+        std::cout << "SP: 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[31] << std::dec << std::endl;
         std::cout << "IR: 0x" << std::hex << std::setw(8) << std::setfill('0') << IR << std::dec << std::endl;
         std::cout << "Status: " << statusReg.toString() << std::endl;
         
         std::cout << "Registers:" << std::endl;
-        for (int i = 0; i < NUM_REGS; i++) {
-            std::cout << "R" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') 
-                 << regs[i] << std::dec;
+        for (int i = 0; i < 31; i++) {
+            std::cout << "X" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[i] << std::dec;
             if (i % 4 == 3) std::cout << std::endl;
             else std::cout << "\t";
         }
@@ -90,12 +93,12 @@ public:
     }
 
 private:
-    std::vector<uint8_t> memory;     // 字节寻址内存
+    std::vector<uint8_t> memory;         // 虚拟内存
     std::array<uint64_t, NUM_REGS> regs; // 寄存器文件
-    uint64_t PC;                // 程序计数器
-    uint32_t IR;                // 指令寄存器
-    uint64_t SP;                // 栈
-    StatusRegister statusReg;   // 状态寄存器
+    uint64_t PC;                         // 程序计数器
+    uint32_t IR;                         // 指令寄存器
+    StatusRegister statusReg;            // 状态寄存器
+
 
     // ====================== 取指阶段 ======================
     void fetch();
@@ -120,6 +123,7 @@ private:
     DataProcOp convertToDataProcOp(uint8_t opcode) const;
     MemoryOp convertToMemoryOp(uint8_t opcode) const;
     SystemOp convertToSystemOp(uint8_t opcode) const;
+    BranchCondition convertToBranchCondition(uint8_t condition) const;
 
     // ====================== ALU操作 ======================
     void aluOperation(ALUOp op, uint8_t rd, uint64_t a, uint64_t b, bool is32bit = false);

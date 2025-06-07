@@ -42,7 +42,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
     // 第一次遍历：处理标签
     for (const auto& line : asmLines) {
         std::string trimmed = trim(line);
-        if (trimmed.empty()) continue;
+        if (trimmed.empty() || trimmed.rfind("//", 0) == 0) continue;
 
         if (trimmed.back() == ':') {
             std::string label = trimmed.substr(0, trimmed.length() - 1);
@@ -78,7 +78,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
 
         std::string opcode = tokens[0];
 
-        if (tokens[0] == ".int" || tokens[0] == ".float") {
+        if (tokens[0] == ".INT" || tokens[0] == ".FLOAT") {
             if (tokens.size() < 2) throw std::runtime_error("缺少数值: " + trimmed);
 
             uint32_t value = 0;
@@ -184,16 +184,6 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             uint32_t instr = (sf << 31) | (opcodeVal << 26) | (rt_num << 21) | (rn_num << 16) | (imm_val & 0xFFFF);
             machineCode.push_back(instr);
         }
-            // std::string rt, rest;
-            // iss >> rt >> rest;
-            // size_t comma = rest.find(',');
-            // std::string baseReg = rest.substr(1, comma - 1);
-            // std::string offsetStr = rest.substr(comma + 2, rest.length() - comma - 3);
-            // uint8_t rt_num = parseReg(rt);
-            // uint8_t rn_num = parseReg(baseReg);
-            // uint16_t offset = stoi(offsetStr);
-            // uint32_t instr = (OP_STR << 26) | (rt_num << 21) | (rn_num << 16) | offset;
-            // machineCode.push_back(instr);
         else if (opcode == "B") {
             if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
             std::string label = tokens[1];
@@ -206,7 +196,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
             uint8_t condition = static_cast<uint8_t>(B_COND_Map[opcode]);
-            uint32_t instr = (OP_B_COND << 26) | (((condition & 0x0F) << 22));
+            uint32_t instr = (OP_B_COND << 26) | ((condition & 0x0F) << 22);
             machineCode.push_back(instr); // 占位，后续填充
         }
         else if (opcode == "HLT") {
@@ -226,8 +216,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
         if (labelAddresses.count(label)) {
             int labelAddr = labelAddresses[label];
             int8_t offset = (labelAddr - (addr + 4)) >> 2;
-            // machineCode[addr / 4] = (OP_B << 26) | (offset & 0x03FFFFFF);
-            machineCode[addr / 4] |= (offset & 0x03FFFFFF);
+            machineCode[addr / 4] |= (offset & 0b1111111111111111111111);
         } else {
             std::cerr << "未知标签: " << label << std::endl;
             exit(1);
@@ -261,6 +250,9 @@ std::string Assembler::trim(const std::string& s) {
 }
 
 uint8_t Assembler::parseReg(const std::string& r) {
+    if (r == "SP" || r == "sp") {
+        return 31;
+    }
     if (r[0] != 'W' && r[0] != 'w' && r[0] != 'X' && r[0] != 'x') {
         throw std::runtime_error("无效寄存器名: " + r);
     }
@@ -276,26 +268,23 @@ std::vector<TokenInfo> Assembler::parseTokens(const std::vector<std::string>& to
         if (token.empty()) throw std::runtime_error("Invalid Token: <empty>");
 
         if (token[0] == 'W' || token[0] == 'w') {
-            info.isValid = true;
             info.isReg = true;
             info.isX = false;
         } else if (token[0] == 'X' || token[0] == 'x') {
-            info.isValid = true;
             info.isReg = true;
             info.isX = true;
         } else if (token.rfind("#0x", 0) == 0) {
-            info.isValid = true;
             info.isImm = true;
             info.isHex = true;
         } else if (token.rfind("#", 0) == 0) {
-            info.isValid = true;
             info.isImm = true;
             info.isHex = false;
-        } else {
+        } else if (token != "SP" && token != "sp") {
             throw std::runtime_error("Invalid Token: " + token);
         }
 
         info.token = token;
+        info.isValid = true;
         parsed.push_back(info);
     };
 
