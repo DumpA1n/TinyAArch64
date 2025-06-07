@@ -81,8 +81,8 @@ InstructionFormat CPU::decode() const {
     case OP_STRH:
     case OP_STRW:
     case OP_STRD: {
-        Register rt{(IR >> 21) & 0x1F, RegWidth::X};
-        Register rn{(IR >> 16) & 0x1F, RegWidth::X};
+        Register rt{(IR >> 21) & 0x1F, regWidth};
+        Register rn{(IR >> 16) & 0x1F, regWidth};
         Immediate offset{IR & 0xFFFF}; // 有符号偏移量
         if (offset.value & 0x8000) { // 符号扩展
             offset.value |= 0xFFFF0000;

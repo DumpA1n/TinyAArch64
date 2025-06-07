@@ -65,7 +65,10 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
         std::vector<std::string> tokens;
 
         while (iss >> token) {
-            token.erase(std::remove(token.begin(), token.end(), ','), token.end());
+            // token.erase(std::remove(token.begin(), token.end(), ','), token.end());
+            token.erase(std::remove_if(token.begin(), token.end(), [](char c) {
+                return c == ',' || c == '[' || c == ']';
+            }), token.end());
             tokens.push_back(token);
         }
         std::transform(tokens[0].begin(), tokens[0].end(), tokens[0].begin(), 
@@ -75,7 +78,19 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
 
         std::string opcode = tokens[0];
 
-        if (opcode == "MOV") {
+        if (tokens[0] == ".int" || tokens[0] == ".float") {
+            if (tokens.size() < 2) throw std::runtime_error("缺少数值: " + trimmed);
+
+            uint32_t value = 0;
+            std::string valToken = tokens[1];
+            if (valToken.find("0x") == 0 || valToken.find("0X") == 0)
+                value = std::stoul(valToken, nullptr, 16);
+            else
+                value = std::stoul(valToken, nullptr, 10);
+
+            machineCode.push_back(value);
+        }
+        else if (opcode == "MOV") {
             if (tokens.size() < 3) throw std::runtime_error("Too few operands: " + trimmed);
             auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
             for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
@@ -92,8 +107,8 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 instr |= (imm_val & 0xFFFF); // 截断低16位
             }
             machineCode.push_back(instr);
-
-        } else if (opcode == "ADD" || opcode == "SUB" || opcode == "AND" || opcode == "ORR" || opcode == "EOR") {
+        }
+        else if (opcode == "ADD" || opcode == "SUB" || opcode == "AND" || opcode == "ORR" || opcode == "EOR") {
             if (tokens.size() < 4) throw std::runtime_error("Too few operands: " + trimmed);
             auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
             for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
@@ -111,8 +126,8 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 instr |= (imm_val & 0xFFFF); // 截断低16位
             }
             machineCode.push_back(instr);
-
-        } else if (opcode == "MUL" || opcode == "SDIV" || opcode == "UDIV") {
+        }
+        else if (opcode == "MUL" || opcode == "SDIV" || opcode == "UDIV") {
             if (tokens.size() < 4) throw std::runtime_error("Too few operands: " + trimmed);
             auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
             for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
@@ -122,8 +137,8 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             uint8_t rm_num = parseReg(parsed[2].token);
             uint32_t instr = (sf << 31) | (OpcodeMap[opcode].first << 26) | (rd_num << 21) | (rn_num << 16) | rm_num;
             machineCode.push_back(instr);
-
-        } else if (opcode == "CMP") {
+        }
+        else if (opcode == "CMP") {
             if (tokens.size() < 3) throw std::runtime_error("Too few operands: " + trimmed);
             auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
             for (const auto& pt : parsed) { if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed); }
@@ -140,39 +155,65 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 instr |= (imm_val & 0xFFFF); // 截断低16位
             }
             machineCode.push_back(instr);
+        }
+        else if (opcode == "LDR" || opcode == "STR" || opcode == "LDRH" || opcode == "STRH" || opcode == "LDRB" || opcode == "STRB") {
+            if (tokens.size() < 3) throw std::runtime_error("Too few operands: " + trimmed);
 
-        // } else if (opcode == "STR") {
-        //     std::string rt, rest;
-        //     iss >> rt >> rest;
-        //     size_t comma = rest.find(',');
-        //     std::string baseReg = rest.substr(1, comma - 1);
-        //     std::string offsetStr = rest.substr(comma + 2, rest.length() - comma - 3);
-        //     uint8_t rt_num = parseReg(rt);
-        //     uint8_t rn_num = parseReg(baseReg);
-        //     uint16_t offset = stoi(offsetStr);
-        //     uint32_t instr = (OP_STR << 26) | (rt_num << 21) | (rn_num << 16) | offset;
-        //     machineCode.push_back(instr);
+            auto parsed = parseTokens(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
+            for (const auto& pt : parsed) {
+                if (!pt.isValid) throw std::runtime_error("Instruction Invalid: " + trimmed);
+            }
 
-        } else if (opcode == "B") {
+            uint8_t sf = parsed[0].isX ? 1 : 0;
+            uint8_t rt_num = parseReg(parsed[0].token);  // rd
+            uint8_t rn_num = parseReg(parsed[1].token);  // base register
+            uint32_t imm_val = 0;
+
+            if (parsed.size() > 2 && parsed[2].isImm) {
+                imm_val = std::stoi(parsed[2].token.substr(1), nullptr, parsed[2].isHex ? 16 : 10);
+            }
+
+            uint8_t opcodeVal = 0;
+            if (opcode == "LDR")  opcodeVal = parsed[0].isX ? OP_LDRD : OP_LDRW;
+            else if (opcode == "STR")  opcodeVal = parsed[0].isX ? OP_STRD : OP_STRW;
+            else if (opcode == "LDRH") opcodeVal = OP_LDRH;
+            else if (opcode == "STRH") opcodeVal = OP_STRH;
+            else if (opcode == "LDRB") opcodeVal = OP_LDRB;
+            else if (opcode == "STRB") opcodeVal = OP_STRB;
+
+            uint32_t instr = (sf << 31) | (opcodeVal << 26) | (rt_num << 21) | (rn_num << 16) | (imm_val & 0xFFFF);
+            machineCode.push_back(instr);
+        }
+            // std::string rt, rest;
+            // iss >> rt >> rest;
+            // size_t comma = rest.find(',');
+            // std::string baseReg = rest.substr(1, comma - 1);
+            // std::string offsetStr = rest.substr(comma + 2, rest.length() - comma - 3);
+            // uint8_t rt_num = parseReg(rt);
+            // uint8_t rn_num = parseReg(baseReg);
+            // uint16_t offset = stoi(offsetStr);
+            // uint32_t instr = (OP_STR << 26) | (rt_num << 21) | (rn_num << 16) | offset;
+            // machineCode.push_back(instr);
+        else if (opcode == "B") {
             if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
             std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
             uint32_t instr = (OP_B << 26);
             machineCode.push_back(instr); // 占位，后续填充
-
-        } else if (B_COND_Map.find(opcode) != B_COND_Map.end()) {
+        }
+        else if (B_COND_Map.find(opcode) != B_COND_Map.end()) {
             if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
             std::string label = tokens[1];
             pendingLabels.push_back({pc, label});
             uint8_t condition = static_cast<uint8_t>(B_COND_Map[opcode]);
             uint32_t instr = (OP_B_COND << 26) | (((condition & 0x0F) << 22));
             machineCode.push_back(instr); // 占位，后续填充
-
-        } else if (opcode == "HLT") {
+        }
+        else if (opcode == "HLT") {
             uint32_t instr = (OP_HLT << 26);
             machineCode.push_back(instr);
-
-        } else {
+        }
+        else {
             std::cerr << "未知指令: " << tokens[0] << std::endl;
             exit(1);
         }

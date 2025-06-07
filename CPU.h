@@ -20,7 +20,7 @@
 class CPU {
 public:
     static const int NUM_REGS = 32;   // 31个通用寄存器
-    static const int MEM_SIZE = 1024; // 1KB内存
+    static const int MEM_SIZE = 1048576; // 1MB内存
     
     CPU() : memory(MEM_SIZE, 0), PC(0), IR(0), statusReg{} {
         reset();
@@ -94,6 +94,7 @@ private:
     std::array<uint64_t, NUM_REGS> regs; // 寄存器文件
     uint64_t PC;                // 程序计数器
     uint32_t IR;                // 指令寄存器
+    uint64_t SP;                // 栈
     StatusRegister statusReg;   // 状态寄存器
 
     // ====================== 取指阶段 ======================
