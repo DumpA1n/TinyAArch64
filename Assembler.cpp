@@ -31,7 +31,7 @@ static std::unordered_map<std::string, enum class BranchCondition> B_COND_Map = 
     {"B.GT", BranchCondition::GT},
     {"B.LE", BranchCondition::LE},
     {"B.AL", BranchCondition::AL},
-    {"BNV", BranchCondition::NV},
+    {"B.NV", BranchCondition::NV},
     {"BEQ", BranchCondition::EQ},
     {"BNE", BranchCondition::NE},
     {"BCS", BranchCondition::CS},
