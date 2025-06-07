@@ -88,7 +88,7 @@ std::vector<uint32_t> createTestProgram() {
 
 // ========================== 主函数 ==========================
 int main() {
-    CPU cpu;
+    CPU& cpu = CPU::GetInstance();
     
     try {
         // 创建并加载测试程序

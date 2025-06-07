@@ -682,22 +682,6 @@ void CPU::printRegisterState() const {
     oss << "\n";
     LOGI(LOG_INSTANCE("CPU"), "%s", oss.str().c_str());
 }
-void CPU::printRegisterState2() const {
-    LOG_INSTANCE("RegVert")->clear();
-    std::ostringstream oss;
-    oss << "===== CPU State =====\n";
-    oss << "PC: 0x" << std::hex << std::setw(16) << std::setfill('0') << PC << std::dec << "\n";
-    oss << "SP: 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[31] << std::dec << "\n";
-    oss << "IR: 0x" << std::hex << std::setw(8) << std::setfill('0') << IR << std::dec << "\n";
-    oss << "Status: " << statusReg.toString() << "\n";
-    
-    oss << "Registers:\n";
-    for (int i = 0; i < 31; i++) {
-        oss << "X" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[i] << std::dec;
-        oss << "\n";
-    }
-    LOGI(LOG_INSTANCE("RegVert"), "%s", oss.str().c_str());
-}
 
 void CPU::printMemoryState(size_t n) const {
     std::ostringstream oss;

@@ -74,7 +74,7 @@ private:
 
         std::string logEntry = getTimeStamp() + " " + levelToString(level) + " " + dynamicBuffer.data();
         logs.push_back(logEntry);
-        // std::cout << logEntry << std::endl;
+        // std::cout << logEntry << std::endl; // 输出到控制台
 
         if (logToFile && logFile.is_open()) {
             logFile << logEntry << std::endl;

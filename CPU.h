@@ -24,9 +24,10 @@ public:
     static const uint64_t MEM_SIZE    = 0x100000; // 1MB内存
     static const uint64_t STACK_BASE  = 0x100000; // 栈顶
     static const uint64_t STACK_LIMIT = 0x000800; // 栈底
+    uint32_t steps;
 
 private:
-    CPU() : memory(MEM_SIZE, 0), PC(0), IR(0), statusReg{} {
+    CPU() : memory(MEM_SIZE, 0), PC(0), IR(0), statusReg{}, steps(0) {
         reset();
     }
     ~CPU() = default;
@@ -47,6 +48,7 @@ public:
         std::fill(regs.begin(), regs.end(), 0);
         std::fill(memory.begin(), memory.end(), 0);
         regs[31] = STACK_BASE; // X31作为SP寄存器
+        steps = 0;
     }
 
     // 加载程序到内存
@@ -79,7 +81,6 @@ public:
     // 打印状态
     void printState() const;
     void printRegisterState() const;
-    void printRegisterState2() const;
     void printMemoryState(size_t n = 64) const;
 
     // 接口

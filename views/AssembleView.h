@@ -24,34 +24,41 @@ public:
 
         ImGui::Begin("AssembleView");
 
-        ImGui::InputTextMultiline("##asm", asmCode, IM_ARRAYSIZE(asmCode),
-                                ImVec2(-1.0f, -1.0f));
+        CPU& cpu = CPU::GetInstance();
+        Assembler Asm;
 
-        if (ImGui::Button("Execute")) {
-            CPU& cpu = CPU::GetInstance();
+        if (ImGui::Button("Start")) {
             cpu.reset();
-            Assembler Asm;
             cpu.loadProgram(Asm.assemble(asmCode));
-
             LOGI(LOG_INSTANCE("CPU"), "===== Starting CPU Simulation =====");
             cpu.printState();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Execute")) {
             try {
                 for (int i = 0; i < 99999; i++) {
-                    LOGI(LOG_INSTANCE("CPU"), ">>> Step %d <<<", (i + 1));
+                    LOGI(LOG_INSTANCE("CPU"), ">>> Step %d <<<", ++cpu.steps);
                     cpu.step();
-                    cpu.printRegisterState();
-                    cpu.printRegisterState2();
                 }
             }
             catch (const std::exception& e) {
-                if (std::string(e.what()).compare("HLT instruction executed") == 0) {
-                    cpu.printRegisterState();
-                    cpu.printRegisterState2();
-                }
-                std::cout << "Execution stopped: " << e.what() << std::endl;
+                LOGI(LOG_INSTANCE("CPU"), "Execution stopped: %s", e.what());
             }
             LOGI(LOG_INSTANCE("CPU"), "===== Simulation Finished =====");
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Next")) {
+            try {
+                LOGI(LOG_INSTANCE("CPU"), ">>> Step %d <<<", ++cpu.steps);
+                cpu.step();
+            }
+            catch (const std::exception& e) {
+                LOGI(LOG_INSTANCE("CPU"), "Execution stopped: %s", e.what());
+            }
+        }
+
+        ImGui::InputTextMultiline("##asm", asmCode, IM_ARRAYSIZE(asmCode),
+                                ImVec2(-1.0f, -1.0f));
 
         ImGui::End();
     }
