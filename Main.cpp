@@ -30,24 +30,52 @@ std::vector<uint32_t> createTestProgram() {
     //     .float 1.23
     // )";
 
+    // std::string shellcode = R"(
+    //     sub     sp, sp, #16
+    //     mov     w0, #0
+    //     str     w0, [sp, #12]
+    //     str     w0, [sp, #8]
+    //     b       .L2
+    // .L3:
+    //     ldr     w1, [sp, #12]
+    //     ldr     w0, [sp, #8]
+    //     add     w0, w1, w0
+    //     str     w0, [sp, #12]
+    //     ldr     w0, [sp, #8]
+    //     add     w0, w0, #1
+    //     str     w0, [sp, #8]
+    // .L2:
+    //     ldr     w0, [sp, #8]
+    //     cmp     w0, #100
+    //     ble     .L3
+    //     add     sp, sp, #16
+    //     HLT
+    // )";
+
+    
+    // 计算斐波那契数列第N项
+    // 50 12586269025 0x2EE333961
+    // const int N = 51;
+    // uint64_t fib[N];
+    // fib[0] = 0;
+    // fib[1] = 1;
+    // for (int i = 2; i < N; ++i) {
+    //     fib[i] = fib[i - 1] + fib[i - 2];
+    //     printf("fib[%d] = %llX %llu\n", i, fib[i], fib[i]);
+    // }
+
     std::string shellcode = R"(
         sub     sp, sp, #16
-        mov     w0, #0
-        str     w0, [sp, #12]
-        str     w0, [sp, #8]
-        b       .L2
-    .L3:
-        ldr     w1, [sp, #12]
-        ldr     w0, [sp, #8]
-        add     w0, w1, w0
-        str     w0, [sp, #12]
-        ldr     w0, [sp, #8]
-        add     w0, w0, #1
-        str     w0, [sp, #8]
-    .L2:
-        ldr     w0, [sp, #8]
-        cmp     w0, #100
-        ble     .L3
+        mov     x0, #0
+        mov     x1, #1
+        mov     x3, #1
+    .Lloop:
+        add     x2, x0, x1
+        mov     x0, x1
+        mov     x1, x2
+        add     x3, x3, #1
+        cmp     x3, #50
+        ble     .Lloop
         add     sp, sp, #16
         HLT
     )";

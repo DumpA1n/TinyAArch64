@@ -123,7 +123,6 @@ private:
     DataProcOp convertToDataProcOp(uint8_t opcode) const;
     MemoryOp convertToMemoryOp(uint8_t opcode) const;
     SystemOp convertToSystemOp(uint8_t opcode) const;
-    BranchCondition convertToBranchCondition(uint8_t condition) const;
 
     // ====================== ALU操作 ======================
     void aluOperation(ALUOp op, uint8_t rd, uint64_t a, uint64_t b, bool is32bit = false);
