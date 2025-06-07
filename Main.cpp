@@ -4,7 +4,6 @@ static int test_address;
 
 // ========================== 测试程序 ==========================
 std::vector<uint32_t> createTestProgram() {
-    // 测试程序：计算斐波那契数列前10项
     std::vector<uint32_t> program;
     Assembler Asm;
 
@@ -76,7 +75,7 @@ int main() {
             for (int i = 0; i < 99999; i++) { // 最多执行50条指令
                 std::cout << ">>> Step " << (i + 1) << " <<<" << std::endl;
                 cpu.step();
-                cpu.printState();
+                // cpu.printState();
             }
         } 
         catch (const std::exception& e) {
