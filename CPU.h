@@ -13,6 +13,7 @@
 #include "Assembler.h"
 #include "Instruction.h"
 #include "Enums.h"
+#include "Log.h"
 
 // ========================== 数据通路组件 ==========================
 
@@ -24,8 +25,19 @@ public:
     static const uint64_t STACK_BASE  = 0x100000; // 栈顶
     static const uint64_t STACK_LIMIT = 0x000800; // 栈底
 
+private:
     CPU() : memory(MEM_SIZE, 0), PC(0), IR(0), statusReg{} {
         reset();
+    }
+    ~CPU() = default;
+
+    CPU(const CPU&) = delete;
+    CPU& operator=(const CPU&) = delete;
+
+public:
+    static CPU& GetInstance() {
+        static CPU instance;
+        return instance;
     }
 
     void reset() {
@@ -64,33 +76,18 @@ public:
         execute(instr);
     }
 
-    // 打印当前状态
-    void printState() const {
-        std::cout << "===== CPU State =====" << std::endl;
-        std::cout << "PC: 0x" << std::hex << std::setw(16) << std::setfill('0') << PC << std::dec << std::endl;
-        std::cout << "SP: 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[31] << std::dec << std::endl;
-        std::cout << "IR: 0x" << std::hex << std::setw(8) << std::setfill('0') << IR << std::dec << std::endl;
-        std::cout << "Status: " << statusReg.toString() << std::endl;
-        
-        std::cout << "Registers:" << std::endl;
-        for (int i = 0; i < 31; i++) {
-            std::cout << "X" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[i] << std::dec;
-            if (i % 4 == 3) std::cout << std::endl;
-            else std::cout << "\t";
-        }
-        std::cout << std::endl;
-        
-        // // 打印内存前64字节
-        // std::cout << "Memory (first 64 bytes):" << std::endl;
-        // for (int i = 0; i < 64; i++) {
-        //     if (i % 16 == 0) {
-        //         if (i > 0) std::cout << std::endl;
-        //         std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
-        //     }
-        //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
-        // }
-        // std::cout << std::dec << std::endl << std::endl;
-    }
+    // 打印状态
+    void printState() const;
+    void printRegisterState() const;
+    void printRegisterState2() const;
+    void printMemoryState(size_t n = 64) const;
+
+    // 接口
+    uint64_t getReg(uint8_t idx) const { return regs[idx]; }
+    uint64_t getPC() const { return PC; }
+    uint64_t getSP() const { return regs[31]; }
+    uint64_t getIR() const { return IR; }
+    StatusRegister getStatusReg() const { return statusReg; }
 
 private:
     std::vector<uint8_t> memory;         // 虚拟内存

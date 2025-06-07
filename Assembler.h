@@ -23,7 +23,8 @@ public:
     std::vector<uint32_t> assemble(const std::string& asmLines);
 
 private:
+    std::vector<TokenInfo> parseTokens(const std::vector<std::string>& tokens);
+
     static std::string trim(const std::string& s);
     static uint8_t parseReg(const std::string& r);
-    static std::vector<TokenInfo> parseTokens(const std::vector<std::string>& tokens);
 };

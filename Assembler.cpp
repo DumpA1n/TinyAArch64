@@ -83,7 +83,6 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
         std::vector<std::string> tokens;
 
         while (iss >> token) {
-            // token.erase(std::remove(token.begin(), token.end(), ','), token.end());
             token.erase(std::remove_if(token.begin(), token.end(), [](char c) {
                 return c == ',' || c == '[' || c == ']';
             }), token.end());
@@ -141,7 +140,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 instr |= rm_num;
             } else if (parsed[2].isImm) {
                 imm_val = std::stoi(parsed[2].token.substr(1), nullptr, parsed[2].isHex ? 16 : 10);
-                instr |= (imm_val & 0xFFFF); // 截断低16位
+                instr |= (imm_val & 0xFFFF);
             }
             machineCode.push_back(instr);
         }
@@ -170,7 +169,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
                 instr |= (rn_num << 16);
             } else if (parsed[1].isImm) {
                 imm_val = std::stoi(parsed[1].token.substr(1), nullptr, parsed[1].isHex ? 16 : 10);
-                instr |= (imm_val & 0xFFFF); // 截断低16位
+                instr |= (imm_val & 0xFFFF);
             }
             machineCode.push_back(instr);
         }
@@ -183,8 +182,8 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             }
 
             uint8_t sf = parsed[0].isX ? 1 : 0;
-            uint8_t rt_num = parseReg(parsed[0].token);  // rd
-            uint8_t rn_num = parseReg(parsed[1].token);  // base register
+            uint8_t rt_num = parseReg(parsed[0].token);
+            uint8_t rn_num = parseReg(parsed[1].token);
             uint32_t imm_val = 0;
 
             if (parsed.size() > 2 && parsed[2].isImm) {
@@ -209,6 +208,13 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             uint32_t instr = (OP_B << 26);
             machineCode.push_back(instr); // 占位，后续填充
         }
+        else if (opcode == "BL") {
+            if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
+            std::string label = tokens[1];
+            pendingLabels.push_back({pc, label});
+            uint32_t instr = (OP_BL << 26);
+            machineCode.push_back(instr); // 占位，后续填充
+        }
         else if (B_COND_Map.find(opcode) != B_COND_Map.end()) {
             if (tokens.size() < 2) throw std::runtime_error("Too few operands: " + trimmed);
             std::string label = tokens[1];
@@ -217,7 +223,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             uint32_t instr = (OP_B_COND << 26) | ((condition & 0x0F) << 22);
             machineCode.push_back(instr); // 占位，后续填充
         }
-        else if (opcode == "HLT") {
+        else if (opcode == "HLT" || opcode == "RET" || opcode == "NOP") {
             uint32_t instr = (OP_HLT << 26);
             machineCode.push_back(instr);
         }

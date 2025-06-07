@@ -112,6 +112,9 @@ InstructionFormat CPU::decode() const {
 
     case OP_BL: {
         Immediate offset = IR & 0x03FFFFFF;
+        if (offset.value & 0x02000000) { // 符号扩展
+            offset.value |= 0xFC000000;
+        }
         instr = InstructionBuilder::buildBranch(offset, BranchCondition::AL, true);
         break;
     }
@@ -632,4 +635,80 @@ void CPU::setRegisterValue(const Register& reg, uint64_t value) {
     } else {
         setXReg(reg.number, value);
     }
+}
+
+// 打印当前状态
+void CPU::printState() const {
+    std::cout << "===== CPU State =====" << std::endl;
+    std::cout << "PC: 0x" << std::hex << std::setw(16) << std::setfill('0') << PC << std::dec << std::endl;
+    std::cout << "SP: 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[31] << std::dec << std::endl;
+    std::cout << "IR: 0x" << std::hex << std::setw(8) << std::setfill('0') << IR << std::dec << std::endl;
+    std::cout << "Status: " << statusReg.toString() << std::endl;
+    
+    std::cout << "Registers:" << std::endl;
+    for (int i = 0; i < 31; i++) {
+        std::cout << "X" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[i] << std::dec;
+        if (i % 4 == 3) std::cout << std::endl;
+        else std::cout << "\t";
+    }
+    std::cout << std::endl;
+    
+    // // 打印内存前64字节
+    // std::cout << "Memory (first 64 bytes):" << std::endl;
+    // for (int i = 0; i < 64; i++) {
+    //     if (i % 16 == 0) {
+    //         if (i > 0) std::cout << std::endl;
+    //         std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
+    //     }
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
+    // }
+    // std::cout << std::dec << std::endl << std::endl;
+}
+
+void CPU::printRegisterState() const {
+    std::ostringstream oss;
+    oss << "===== CPU State =====\n";
+    oss << "PC: 0x" << std::hex << std::setw(16) << std::setfill('0') << PC << std::dec << "\n";
+    oss << "SP: 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[31] << std::dec << "\n";
+    oss << "IR: 0x" << std::hex << std::setw(8) << std::setfill('0') << IR << std::dec << "\n";
+    oss << "Status: " << statusReg.toString() << "\n";
+    
+    oss << "Registers:\n";
+    for (int i = 0; i < 31; i++) {
+        oss << "X" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[i] << std::dec;
+        if (i % 4 == 3) oss << "\n";
+        else oss << "\t";
+    }
+    oss << "\n";
+    LOGI(LOG_INSTANCE("CPU"), "%s", oss.str().c_str());
+}
+void CPU::printRegisterState2() const {
+    LOG_INSTANCE("RegVert")->clear();
+    std::ostringstream oss;
+    oss << "===== CPU State =====\n";
+    oss << "PC: 0x" << std::hex << std::setw(16) << std::setfill('0') << PC << std::dec << "\n";
+    oss << "SP: 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[31] << std::dec << "\n";
+    oss << "IR: 0x" << std::hex << std::setw(8) << std::setfill('0') << IR << std::dec << "\n";
+    oss << "Status: " << statusReg.toString() << "\n";
+    
+    oss << "Registers:\n";
+    for (int i = 0; i < 31; i++) {
+        oss << "X" << i << ": 0x" << std::hex << std::setw(16) << std::setfill('0') << regs[i] << std::dec;
+        oss << "\n";
+    }
+    LOGI(LOG_INSTANCE("RegVert"), "%s", oss.str().c_str());
+}
+
+void CPU::printMemoryState(size_t n) const {
+    std::ostringstream oss;
+    oss << "Memory:\n";
+    for (size_t i = 0; i < n; i++) {
+        if (i % 16 == 0) {
+            if (i > 0) oss << "\n";
+            oss << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
+        }
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
+    }
+    oss << std::dec << "\n\n";
+    LOGI(LOG_INSTANCE("CPU"), "%s", oss.str().c_str());
 }
