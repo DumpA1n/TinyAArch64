@@ -19,7 +19,7 @@ public:
         ImGui::SetNextWindowSize(ImVec2{getViewSize().w, getViewSize().h});
         ImGui::SetNextWindowPos(ImVec2{getViewPos().x, getViewPos().y});
 
-        ImGui::Begin("Register View");
+        ImGui::Begin("RegisterView");
         ImGui::BeginChild("RegisterRegion", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
 
         CPU& cpu = CPU::GetInstance();
@@ -47,7 +47,7 @@ public:
 
                 // 在高亮时间内，设置背景色
                 if (highlightTimer[i] > 0) {
-                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 170));
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 160));
                     highlightTimer[i]--;
                 }
 
