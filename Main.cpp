@@ -1,4 +1,3 @@
-#include "Main.h"
 #include "Views/AssembleView.h"
 #include "Views/DebugInfoView.h"
 #include "Views/MemoryView.h"
