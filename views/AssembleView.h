@@ -111,7 +111,10 @@ public:
                 ImVec4 color = isCurrentExec ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f)
                                             : ImGui::GetStyleColorVec4(ImGuiCol_Text);
                 ImGui::PushStyleColor(ImGuiCol_Text, color);
-                ImGui::Text("%4d | %s", displayLineIndex[i], lines[i].c_str());
+                if (lines[i].back() == ':')
+                    ImGui::Text("%s", lines[i].c_str());
+                else
+                    ImGui::Text("%4d | %s", displayLineIndex[i], lines[i].c_str());
                 ImGui::PopStyleColor();
             }
 

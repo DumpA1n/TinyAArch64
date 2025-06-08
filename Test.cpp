@@ -68,9 +68,8 @@ std::vector<uint32_t> createTestProgram() {
         mov     x1, #1
         mov     x3, #1
     .Lloop:
-        add     x2, x0, x1
-        // bl      Add()
-        // mov     x2, x0
+        bl      Add()
+        mov     x2, x0
         mov     x0, x1
         mov     x1, x2
         add     x3, x3, #1
