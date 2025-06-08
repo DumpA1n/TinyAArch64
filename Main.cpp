@@ -151,8 +151,8 @@ int main(int, char**)
 
 
         static auto debugInfoView = new DebugInfoView();
-        debugInfoView->setViewSize({screenW * 1.0f, screenH * 0.3f});
-        debugInfoView->setViewPos({screenW * 0.0f, screenH * 0.7f});
+        debugInfoView->setViewSize({screenW * 0.2f, screenH * 1.0f});
+        debugInfoView->setViewPos({screenW * 0.0f, screenH * 0.0f});
         debugInfoView->Show();
 
         static auto assembleView = new AssembleView();
@@ -161,9 +161,14 @@ int main(int, char**)
         assembleView->Show();
 
         static auto registerView = new RegisterView();
-        registerView->setViewSize({screenW * 0.2f, screenH * 0.7f});
+        registerView->setViewSize({screenW * 0.2f, screenH * 1.0f});
         registerView->setViewPos({screenW * 0.8f, screenH * 0.0f});
         registerView->Show();
+
+        static auto memoryView = new MemoryView();
+        memoryView->setViewSize({screenW * 0.6f, screenH * 0.3f});
+        memoryView->setViewPos({screenW * 0.2f, screenH * 0.7f});
+        memoryView->Show();
 
 
 

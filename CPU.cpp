@@ -653,16 +653,16 @@ void CPU::printState() const {
     }
     std::cout << std::endl;
     
-    // // 打印内存前64字节
-    // std::cout << "Memory (first 64 bytes):" << std::endl;
-    // for (int i = 0; i < 64; i++) {
-    //     if (i % 16 == 0) {
-    //         if (i > 0) std::cout << std::endl;
-    //         std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
-    //     }
-    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
-    // }
-    // std::cout << std::dec << std::endl << std::endl;
+    // 打印内存前64字节
+    std::cout << "Memory (first 64 bytes):" << std::endl;
+    for (int i = 0; i < 64; i++) {
+        if (i % 16 == 0) {
+            if (i > 0) std::cout << std::endl;
+            std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << i << ": ";
+        }
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]) << " ";
+    }
+    std::cout << std::dec << std::endl << std::endl;
 }
 
 void CPU::printRegisterState() const {

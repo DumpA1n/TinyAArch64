@@ -12,7 +12,10 @@ static std::unordered_map<std::string, std::pair<Opcode, Opcode>> OpcodeMap = {
     {"UDIV", {OP_UDIV, OP_UDIV}},
     {"AND", {OP_AND, OP_ANDI}},
     {"ORR", {OP_ORR, OP_ORRI}},
-    {"EOR", {OP_EOR, OP_EORI}}
+    {"EOR", {OP_EOR, OP_EORI}},
+    {"NOP", {OP_NOP, OP_NOP}},
+    {"RET", {OP_RET, OP_RET}},
+    {"HLT", {OP_HLT, OP_HLT}}
 };
 
 static std::unordered_map<std::string, enum class BranchCondition> B_COND_Map = {
@@ -224,7 +227,7 @@ std::vector<uint32_t> Assembler::assemble(const std::vector<std::string>& asmLin
             machineCode.push_back(instr); // 占位，后续填充
         }
         else if (opcode == "HLT" || opcode == "RET" || opcode == "NOP") {
-            uint32_t instr = (OP_HLT << 26);
+            uint32_t instr = (OpcodeMap[opcode].first << 26);
             machineCode.push_back(instr);
         }
         else {

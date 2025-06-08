@@ -89,6 +89,7 @@ public:
     uint64_t getSP() const { return regs[31]; }
     uint64_t getIR() const { return IR; }
     StatusRegister getStatusReg() const { return statusReg; }
+    std::vector<uint8_t> getMemory() const { return memory; };
 
 private:
     std::vector<uint8_t> memory;         // 虚拟内存
