@@ -1,3 +1,5 @@
+#include "external/imgui/misc/fonts/Consolas.h"
+
 #include "Views/AssembleView.h"
 #include "Views/DebugInfoView.h"
 #include "Views/MemoryView.h"
@@ -112,7 +114,8 @@ int main(int, char**)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     // ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\imguiFonts\\OPPOSansH400.ttf", 20.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull());
-    ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\imguiFonts\\Consolas.ttf", 20.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull());
+    // ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\imguiFonts\\Consolas.ttf", 20.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull());
+    ImFont* font = io.Fonts->AddFontFromMemoryCompressedBase85TTF(Consolas_compressed_data_base85, 20.0f);
     //IM_ASSERT(font != nullptr);
 
     // Our state
