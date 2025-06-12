@@ -76,8 +76,10 @@ public:
 
         ImGui::SameLine();
         if (ImGui::Button("Execute")) {
+            auto start = std::chrono::high_resolution_clock::now();
+
             try {
-                for (int i = 0; i < 99999; i++) {
+                for (int i = 0; i < 999999; i++) {
                     LOGI(LOG_INSTANCE("CPU"), ">>> Step %d <<<", ++cpu.steps);
                     cpu.step();
                 }
@@ -85,10 +87,15 @@ public:
                 LOGI(LOG_INSTANCE("CPU"), "Execution stopped: %s", e.what());
             }
             LOGI(LOG_INSTANCE("CPU"), "===== Simulation Finished =====");
+            auto end = std::chrono::high_resolution_clock::now();
+
+            // 计算耗时
+            auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            LOGI(LOG_INSTANCE("CPU"), "Takes Time: %llu ms", duration_ms);
         }
 
         ImGui::SameLine();
-        if (ImGui::Button("Next")) {
+        if (ImGui::Button("Next") || ImGui::IsKeyPressed(ImGuiKey::ImGuiKey_F8)) {
             try {
                 LOGI(LOG_INSTANCE("CPU"), ">>> Step %d <<<", ++cpu.steps);
                 cpu.step();

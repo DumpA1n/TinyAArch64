@@ -28,27 +28,27 @@ std::vector<uint32_t> createTestProgram() {
     //     .float 1.23
     // )";
 
-    // std::string shellcode = R"(
-    //     sub     sp, sp, #16
-    //     mov     w0, #0
-    //     str     w0, [sp, #12]
-    //     str     w0, [sp, #8]
-    //     b       .L2
-    // .L3:
-    //     ldr     w1, [sp, #12]
-    //     ldr     w0, [sp, #8]
-    //     add     w0, w1, w0
-    //     str     w0, [sp, #12]
-    //     ldr     w0, [sp, #8]
-    //     add     w0, w0, #1
-    //     str     w0, [sp, #8]
-    // .L2:
-    //     ldr     w0, [sp, #8]
-    //     cmp     w0, #100
-    //     ble     .L3
-    //     add     sp, sp, #16
-    //     HLT
-    // )";
+    std::string shellcode_sum = R"(
+        sub     sp, sp, #16
+        mov     w0, #0
+        str     w0, [sp, #12]
+        str     w0, [sp, #8]
+        b       .L2
+    .L3:
+        ldr     w1, [sp, #12]
+        ldr     w0, [sp, #8]
+        add     w0, w1, w0
+        str     w0, [sp, #12]
+        ldr     w0, [sp, #8]
+        add     w0, w0, #1
+        str     w0, [sp, #8]
+    .L2:
+        ldr     w0, [sp, #8]
+        cmp     w0, #100
+        ble     .L3
+        add     sp, sp, #16
+        HLT
+    )";
 
     
     // 计算斐波那契数列第N项
